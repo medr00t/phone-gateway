@@ -1,0 +1,8 @@
+{
+  "delayMs": 3000,
+  "messages": [
+    { "to": "+212600000001", "text": "Bonjour Ahmed, votre rendez-vous est confirmé.", "ref": "rdv-101" },
+    { "to": "0600000002",    "text": "Rappel: facture 2026-044 à régler avant le 05/11.", "ref": "fac-044" },
+    { "to": ["+212600000003", "+212600000004"], "text": "Même texte pour ces deux numéros." }
+  ]
+}
