@@ -26,6 +26,13 @@ object SmsSender {
         sm.sendMultipartTextMessage(job.to, null, parts, sent, delivered)
     }
 
+    /** Fire-and-forget SMS (no job): used by a call's probe. */
+    @Suppress("DEPRECATION")
+    fun sendRaw(ctx: Context, to: String, text: String) {
+        val sm = if (Build.VERSION.SDK_INT >= 31) ctx.getSystemService(SmsManager::class.java) else SmsManager.getDefault()
+        sm.sendMultipartTextMessage(to, null, sm.divideMessage(text), null, null)
+    }
+
     private fun pending(ctx: Context, action: String, id: String, part: Int): PendingIntent {
         val i = Intent(action).setClass(ctx, SmsResultReceiver::class.java).putExtra("id", id)
         return PendingIntent.getBroadcast(ctx, (id.hashCode() * 31 + part) * 2 + (if (action == ACTION_SENT) 0 else 1),

@@ -43,3 +43,9 @@ class BatchParserTest {
         assertTrue(BatchParser.parse(many).items.isEmpty())
     }
 }
+
+class CallVerdictTest {
+    @Test fun pickedUpIsVoicemail() = assertEquals("VOICEMAIL", CallVerdict.decide(true, false))
+    @Test fun rejectedWithSmsIsAlive() = assertEquals("ALIVE", CallVerdict.decide(false, true))
+    @Test fun rejectedWithoutSmsIsOffline() = assertEquals("OFFLINE", CallVerdict.decide(false, false))
+}

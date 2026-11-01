@@ -121,7 +121,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"to\": \"+212600000001\",\n  \"hangupAfterSec\": 25\n}"
+          "raw": "{\n  \"to\": \"+212600000001\",\n  \"hangupAfterSec\": 25,\n  \"waitSmsSec\": 30,\n  \"probeText\": \"\",\n  \"ref\": \"ticket-12\"\n}"
         }
       }
     },
@@ -201,6 +201,32 @@
               "value": "0"
             }
           ]
+        }
+      }
+    },
+    {
+      "name": "Régler les webhooks",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/settings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "settings"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jobWebhookUrl\": \"https://votre-serveur/hooks/phone-job\",\n  \"webhookUrl\": \"https://votre-serveur/hooks/phone-sms\"\n}"
         }
       }
     }

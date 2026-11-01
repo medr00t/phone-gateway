@@ -12,9 +12,10 @@ import java.security.MessageDigest
  *   GET  /api/status
  *   POST /api/sms          {"to":"+2126...","text":"...","ref":"x"}
  *   POST /api/sms/batch    [ {"to","text"}, ... ]  or  {"delayMs":3000,"messages":[...]}
- *   POST /api/call         {"to":"+2126...","hangupAfterSec":25,"ref":"x"}
+ *   POST /api/call         {"to":"+2126...","hangupAfterSec":25,"waitSmsSec":30,"probeText":"STATUS#","ref":"x"}
  *   GET  /api/jobs?batch=&status=&limit=       GET /api/jobs/{id}
  *   GET  /api/inbox?since=<ms>&from=<number>
+ *   GET|POST /api/settings  {"jobWebhookUrl":"http://…","webhookUrl":"http://…"}
  */
 class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
     private companion object { const val MAX_BODY = 2_000_000 }
@@ -49,7 +50,9 @@ class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
                 val o = parseObject(s) ?: return bad("JSON invalide")
                 val to = BatchParser.normalizeNumber(o.optString("to", "")) ?: return bad("numéro invalide")
                 val hang = o.optInt("hangupAfterSec", 25).coerceIn(5, 60)
-                val j = Dispatcher.enqueueCall(to, if (o.has("ref")) o.get("ref").toString() else null, hang)
+                val wait = o.optInt("waitSmsSec", 30).coerceIn(0, 120)
+                val probe = o.optString("probeText", "").take(160)
+                val j = Dispatcher.enqueueCall(to, if (o.has("ref")) o.get("ref").toString() else null, hang, wait, probe)
                 json(Response.Status.ACCEPTED, JSONObject().put("id", j.id))
             }
 
@@ -65,6 +68,19 @@ class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
             get && path.startsWith("/api/jobs/") -> {
                 val j = JobStore.get(path.removePrefix("/api/jobs/")) ?: return json(Response.Status.NOT_FOUND, JSONObject().put("error", "introuvable"))
                 json(Response.Status.OK, j.toJson())
+            }
+
+            get && path == "/api/settings" -> json(Response.Status.OK, JSONObject()
+                .put("jobWebhookUrl", settings.jobWebhookUrl).put("webhookUrl", settings.webhookUrl))
+            post && path == "/api/settings" -> {
+                val o = parseObject(s) ?: return bad("JSON invalide")
+                for (k in listOf("jobWebhookUrl", "webhookUrl")) {
+                    if (!o.has(k)) continue
+                    val v = o.optString(k, "").trim()
+                    if (v.isNotEmpty() && !(v.startsWith("http://") || v.startsWith("https://"))) return bad("$k doit commencer par http:// ou https://")
+                    if (k == "jobWebhookUrl") settings.jobWebhookUrl = v else settings.webhookUrl = v
+                }
+                json(Response.Status.OK, JSONObject().put("jobWebhookUrl", settings.jobWebhookUrl).put("webhookUrl", settings.webhookUrl))
             }
 
             get && path == "/api/inbox" -> {

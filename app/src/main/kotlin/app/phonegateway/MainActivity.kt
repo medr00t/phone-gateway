@@ -53,6 +53,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var summary: TextView
     private lateinit var portInput: EditText
     private lateinit var hookInput: EditText
+    private lateinit var jobHookInput: EditText
     private lateinit var toInput: EditText
     private lateinit var textInput: EditText
 
@@ -125,9 +126,10 @@ class MainActivity : ComponentActivity() {
         // ── Settings ──
         portInput = input("Port (8088)", InputType.TYPE_CLASS_NUMBER).apply { setText(settings.port.toString()) }
         hookInput = input("Webhook SMS reçus (optionnel)", InputType.TYPE_TEXT_VARIATION_URI).apply { setText(settings.webhookUrl) }
+        jobHookInput = input("Webhook statut SMS / appels (optionnel)", InputType.TYPE_TEXT_VARIATION_URI).apply { setText(settings.jobWebhookUrl) }
         root.addView(card(
             heading("Réglages"),
-            portInput, hookInput,
+            portInput, jobHookInput, hookInput,
             button("Enregistrer", primary, outline = true) { saveSettings() },
         ))
 
@@ -153,6 +155,7 @@ class MainActivity : ComponentActivity() {
     private fun saveSettings() {
         settings.port = portInput.text.toString().toIntOrNull()?.coerceIn(1024, 65535) ?: 8088
         settings.webhookUrl = hookInput.text.toString()
+        settings.jobWebhookUrl = jobHookInput.text.toString()
         if (GatewayService.running) { GatewayService.stop(this); ui.postDelayed({ GatewayService.start(this) }, 700) }
         toast("Réglages enregistrés")
     }
@@ -236,8 +239,13 @@ class MainActivity : ComponentActivity() {
                     Status.DELIVERED, Status.DONE -> ok; Status.SENT -> primary; Status.FAILED -> bad; else -> warn
                 }
                 val detail = if (job.kind == Kind.SMS) job.text.take(60)
-                    else if (job.durationSec >= 0) (if (job.connected == true) "décroché" else "pas de réponse") + " • ${job.durationSec}s" else "appel…"
-                journalBox.addView(logRow((if (job.kind == Kind.SMS) "✉  " else "☎  ") + job.to, detail + (job.error?.let { "\n⚠ $it" } ?: ""), fmt.format(Date(at)), job.status.name, color))
+                    else if (job.durationSec >= 0) when (job.verdict) {
+                        "VOICEMAIL" -> "boîte vocale • ${job.durationSec}s"
+                        "ALIVE" -> "sans réponse + SMS reçu : OK"
+                        "OFFLINE" -> "sans réponse, pas de SMS : hors ligne"
+                        else -> "pas de réponse"
+                    } else "appel…"
+                journalBox.addView(logRow((if (job.kind == Kind.SMS) "✉  " else "☎  ") + job.to, detail + (job.error?.let { "\n⚠ $it" } ?: ""), fmt.format(Date(at)), job.verdict ?: job.status.name, color))
             } else if (msg != null) {
                 journalBox.addView(logRow("⬇  ${msg.from}", msg.text.take(80), fmt.format(Date(at)), "REÇU", Color.parseColor("#6D28D9")))
             }

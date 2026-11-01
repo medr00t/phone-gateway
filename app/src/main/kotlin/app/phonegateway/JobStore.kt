@@ -12,6 +12,7 @@ object JobStore {
 
     @Synchronized fun init(ctx: Context) {
         if (file != null) return
+        Notifier.init(ctx)
         file = File(ctx.filesDir, "jobs.json").also { f ->
             if (f.exists()) try {
                 val arr = JSONArray(f.readText())

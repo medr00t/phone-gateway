@@ -43,8 +43,9 @@ object Dispatcher {
         return batchId
     }
 
-    fun enqueueCall(to: String, ref: String?, hangupAfterSec: Int): Job {
-        val j = Job(UUID.randomUUID().toString().take(12), Kind.CALL, to, "", ref, null, 3000, hangupAfterSec)
+    /** probeText: optional SMS to send when the tracker does not text back by itself (e.g. "STATUS#"). */
+    fun enqueueCall(to: String, ref: String?, hangupAfterSec: Int, waitSmsSec: Int = 30, probeText: String = ""): Job {
+        val j = Job(UUID.randomUUID().toString().take(12), Kind.CALL, to, probeText, ref, null, 3000, hangupAfterSec, waitSmsSec)
         JobStore.add(j); queue.add(j)
         return j
     }

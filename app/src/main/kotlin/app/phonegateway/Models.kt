@@ -17,6 +17,7 @@ class Job(
     val batchId: String? = null,
     val delayMs: Long = 2000,         // pause after this job, before the next one
     val hangupAfterSec: Int = 25,     // calls only
+    val waitSmsSec: Int = 30,         // calls only: how long to wait for the tracker's SMS reply
     val createdAt: Long = System.currentTimeMillis(),
 ) {
     @Volatile var status: Status = Status.QUEUED
@@ -24,6 +25,7 @@ class Job(
     @Volatile var updatedAt: Long = createdAt
     @Volatile var durationSec: Int = -1       // calls: seconds the line was connected (0 = never answered)
     @Volatile var connected: Boolean? = null  // calls: true when somebody/something picked up
+    @Volatile var verdict: String? = null     // calls: VOICEMAIL / ALIVE / OFFLINE
     val partsTotal = AtomicInteger(0)
     val partsSent = AtomicInteger(0)
     val partsDelivered = AtomicInteger(0)
@@ -32,6 +34,7 @@ class Job(
         status = s
         if (err != null) error = err
         updatedAt = System.currentTimeMillis()
+        Notifier.job(this)
     }
 
     fun toJson(): JSONObject = JSONObject().apply {
@@ -47,6 +50,7 @@ class Job(
             put("durationSec", durationSec)
             put("connected", connected ?: false)
             put("outcome", if (connected == true) "PICKED_UP" else "NO_ANSWER")
+            if (verdict != null) put("verdict", verdict)
         }
         put("createdAt", createdAt)
         put("updatedAt", updatedAt)
@@ -68,6 +72,7 @@ class Job(
             if (o.has("durationSec")) {
                 it.durationSec = o.getInt("durationSec")
                 it.connected = o.optBoolean("connected", false)
+                it.verdict = if (o.has("verdict")) o.getString("verdict") else null
             }
         }
     }

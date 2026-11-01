@@ -5,8 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 
 class InboxMessage(val from: String, val text: String, val at: Long) {
     fun toJson(): JSONObject = JSONObject().put("from", from).put("text", text).put("at", at)
@@ -30,16 +28,7 @@ class SmsInboxReceiver : BroadcastReceiver() {
         val from = parts[0].originatingAddress ?: return
         val m = InboxMessage(from, parts.joinToString("") { it.messageBody.orEmpty() }, System.currentTimeMillis())
         Inbox.add(m)
-        val url = Settings(ctx).webhookUrl
-        if (url.isNotEmpty()) Thread {
-            try {
-                val c = URL(url).openConnection() as HttpURLConnection
-                c.requestMethod = "POST"; c.doOutput = true
-                c.connectTimeout = 8000; c.readTimeout = 8000
-                c.setRequestProperty("Content-Type", "application/json")
-                c.outputStream.use { it.write(m.toJson().toString().toByteArray()) }
-                c.responseCode; c.disconnect()
-            } catch (_: Exception) { /* the message stays available on /api/inbox */ }
-        }.start()
+        val st = Settings(ctx)
+        if (st.webhookUrl.isNotEmpty()) Notifier.sms(st.webhookUrl, st.token, m)
     }
 }

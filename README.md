@@ -22,3 +22,17 @@ Import it from the app (button "Importer un fichier JSON") or via the API.
 - `POST /api/call` `{"to","hangupAfterSec"}` -> job; result has `durationSec` and `connected` (>0 = picked up)
 - `GET  /api/jobs?batch=&status=&limit=`, `GET /api/jobs/{id}`
 - `GET  /api/inbox?since=<ms>&from=<number>` received SMS (or set a webhook in the app)
+
+## Webhooks (phone -> your server)
+Set once with `POST /api/settings {"jobWebhookUrl":"https://…","webhookUrl":"https://…"}` (or in the app).
+Every POST carries header `X-Gateway-Token: <token>`; 3 tries (2 s, 10 s, 30 s) until a 2xx answer.
+- `jobWebhookUrl`: one event per final status of each job: `{"event":"job.status","id","kind","to","ref","status":"SENT|DELIVERED|FAILED|DONE","error",…}`
+- `webhookUrl`: each received SMS: `{"event":"sms.received","from","text","at"}`
+
+## Calling a tracker's SIM
+`POST /api/call {"to","hangupAfterSec":25,"waitSmsSec":30,"probeText":""}`. The job ends with a `verdict`:
+- `VOICEMAIL`: the line was picked up (a tracker never answers: operator voicemail or a person) -> contact the client
+- `ALIVE`: rejected, and the tracker texted back within `waitSmsSec` -> on, with network (garage / basement)
+- `OFFLINE`: rejected and no SMS -> SIM without credit, or box off / unplugged
+`probeText` (optional, e.g. `STATUS#`) is texted to the SIM if it did not answer by itself, then the wait restarts.
+Not every tracker texts back after a call (GT06/TK103 usually do; a Teltonika needs its call/SMS settings checked, or a probe command).

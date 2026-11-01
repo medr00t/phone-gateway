@@ -55,12 +55,31 @@ object CallRunner {
                 if (c.getString(0).orEmpty().filter { it.isDigit() }.endsWith(last8)) {
                     job.durationSec = c.getInt(1)
                     job.connected = job.durationSec > 0
-                    // for a tracker: rejected (0 s) = alive, then it answers by SMS; picked up = voicemail or a person
+                    job.verdict = CallVerdict.decide(job.connected == true, job.connected != true && waitForSms(ctx, job, start))
                     job.set(Status.DONE)
                     return
                 }
             }
         }
         job.set(Status.FAILED, "appel introuvable dans le journal d'appels")
+    }
+
+    /** A rejected call to a tracker: it usually texts its position back. Wait for it, then optionally prompt it. */
+    private fun waitForSms(ctx: Context, job: Job, since: Long): Boolean {
+        fun wait(sec: Int): Boolean {
+            val end = System.currentTimeMillis() + sec * 1000L
+            while (System.currentTimeMillis() < end) {
+                if (Inbox.since(since, job.to).isNotEmpty()) return true
+                Thread.sleep(1000)
+            }
+            return false
+        }
+        if (job.waitSmsSec <= 0) return false
+        if (wait(job.waitSmsSec)) return true
+        if (job.text.isNotBlank()) {            // text = the probe command for calls
+            SmsSender.sendRaw(ctx, job.to, job.text)
+            return wait(job.waitSmsSec)
+        }
+        return false
     }
 }

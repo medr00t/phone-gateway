@@ -16,6 +16,11 @@ class Settings(ctx: Context) {
         get() = p.getString("webhook", "") ?: ""
         set(v) { p.edit().putString("webhook", v.trim()).apply() }
 
+    /** Final status of every SMS / call is POSTed here as JSON. */
+    var jobWebhookUrl: String
+        get() = p.getString("jobWebhook", "") ?: ""
+        set(v) { p.edit().putString("jobWebhook", v.trim()).apply() }
+
     val token: String
         get() {
             val t = p.getString("token", null)
