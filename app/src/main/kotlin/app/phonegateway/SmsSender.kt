@@ -43,12 +43,29 @@ class SmsResultReceiver : BroadcastReceiver() {
                 if (resultCode == android.app.Activity.RESULT_OK) {
                     if (job.partsSent.incrementAndGet() >= job.partsTotal.get() && job.status != Status.FAILED) job.set(Status.SENT)
                 } else {
-                    job.set(Status.FAILED, "envoi refusé (code $resultCode)")
+                    job.set(Status.FAILED, sendError(resultCode, intent.getIntExtra("errorCode", -1)))
                 }
             SmsSender.ACTION_DELIVERED ->
-                if (resultCode == android.app.Activity.RESULT_OK &&
-                    job.partsDelivered.incrementAndGet() >= job.partsTotal.get() && job.status != Status.FAILED) job.set(Status.DELIVERED)
+                if (resultCode == android.app.Activity.RESULT_OK) {
+                    if (job.partsDelivered.incrementAndGet() >= job.partsTotal.get() && job.status != Status.FAILED) job.set(Status.DELIVERED)
+                } else job.set(Status.FAILED, "non livré (le destinataire n'a pas reçu le SMS)")
         }
         JobStore.save()
     }
+}
+
+/** Android's SmsManager result codes, named. */
+fun sendError(code: Int, radioCode: Int): String {
+    val name = when (code) {
+        1 -> "GENERIC_FAILURE (échec générique, souvent pas de crédit/forfait ou SIM bloquée)"
+        2 -> "RADIO_OFF (mode avion ou radio coupée)"
+        3 -> "NULL_PDU (message invalide)"
+        4 -> "NO_SERVICE (pas de réseau)"
+        5 -> "LIMIT_EXCEEDED (limite d'envoi Android atteinte)"
+        6 -> "FDN_CHECK_FAILURE (numéro interdit par la SIM)"
+        7 -> "SHORT_CODE_NOT_ALLOWED"
+        8 -> "SHORT_CODE_NEVER_ALLOWED"
+        else -> "code $code"
+    }
+    return if (radioCode >= 0) "$name, code radio $radioCode" else name
 }

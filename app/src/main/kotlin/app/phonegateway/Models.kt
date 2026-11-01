@@ -46,6 +46,7 @@ class Job(
         if (kind == Kind.CALL && durationSec >= 0) {
             put("durationSec", durationSec)
             put("connected", connected ?: false)
+            put("outcome", if (connected == true) "PICKED_UP" else "NO_ANSWER")
         }
         put("createdAt", createdAt)
         put("updatedAt", updatedAt)

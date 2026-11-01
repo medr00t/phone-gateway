@@ -55,6 +55,7 @@ object CallRunner {
                 if (c.getString(0).orEmpty().filter { it.isDigit() }.endsWith(last8)) {
                     job.durationSec = c.getInt(1)
                     job.connected = job.durationSec > 0
+                    // for a tracker: rejected (0 s) = alive, then it answers by SMS; picked up = voicemail or a person
                     job.set(Status.DONE)
                     return
                 }
