@@ -17,6 +17,8 @@ import java.security.MessageDigest
  *   GET  /api/inbox?since=<ms>&from=<number>
  */
 class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
+    private companion object { const val MAX_BODY = 2_000_000 }
+
 
     override fun serve(session: IHTTPSession): Response {
         return try {
@@ -87,10 +89,20 @@ class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
         return MessageDigest.isEqual(given.toByteArray(), settings.token.toByteArray())
     }
 
+    // Read the raw bytes and decode them as UTF-8 ourselves: NanoHTTPD decodes as US-ASCII when the
+    // client sends no charset, which turned every accent of a French SMS into "��".
     private fun body(s: IHTTPSession): String {
-        val files = HashMap<String, String>()
-        s.parseBody(files)
-        return files["postData"] ?: ""
+        val len = s.headers["content-length"]?.toIntOrNull() ?: 0
+        if (len <= 0) return ""
+        if (len > MAX_BODY) throw IllegalArgumentException("corps trop gros (max $MAX_BODY octets)")
+        val buf = ByteArray(len)
+        var off = 0
+        while (off < len) {
+            val n = s.inputStream.read(buf, off, len - off)
+            if (n < 0) break
+            off += n
+        }
+        return String(buf, 0, off, Charsets.UTF_8)
     }
 
     private fun parseObject(s: IHTTPSession): JSONObject? = try { JSONObject(body(s)) } catch (_: JSONException) { null }
