@@ -1,0 +1,208 @@
+{
+  "info": {
+    "name": "Phone Gateway",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8088"
+    },
+    {
+      "key": "token",
+      "value": "COLLER_LE_JETON_ICI"
+    }
+  ],
+  "item": [
+    {
+      "name": "Status",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/status",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "status"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Envoyer un SMS",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/sms",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "sms"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"to\": \"+212600000001\",\n  \"text\": \"Bonjour, test depuis Postman\",\n  \"ref\": \"test-1\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Envoyer un lot (textes et numéros différents)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/sms/batch",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "sms",
+            "batch"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"delayMs\": 3000,\n  \"messages\": [\n    {\n      \"to\": \"+212600000001\",\n      \"text\": \"Bonjour Ahmed, rdv confirmé\",\n      \"ref\": \"rdv-101\"\n    },\n    {\n      \"to\": \"0600000002\",\n      \"text\": \"Facture 2026-044 à régler\"\n    },\n    {\n      \"to\": [\n        \"+212600000003\",\n        \"+212600000004\"\n      ],\n      \"text\": \"Même texte, deux numéros\"\n    }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "name": "Appeler",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/call",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "call"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"to\": \"+212600000001\",\n  \"hangupAfterSec\": 25\n}"
+        }
+      }
+    },
+    {
+      "name": "Liste des jobs",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/jobs?limit=50",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "jobs"
+          ],
+          "query": [
+            {
+              "key": "limit",
+              "value": "50"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Un job",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/jobs/ID_DU_JOB",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "jobs",
+            "ID_DU_JOB"
+          ]
+        }
+      }
+    },
+    {
+      "name": "SMS reçus",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/inbox?since=0",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "inbox"
+          ],
+          "query": [
+            {
+              "key": "since",
+              "value": "0"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
