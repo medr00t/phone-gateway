@@ -31,6 +31,7 @@ class GatewayService : Service() {
             startForeground(1, note, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else startForeground(1, note)
 
+        running = true
         if (server == null) {
             server = ApiServer(settings, settings.port).also { it.start(5000, false) }
             Dispatcher.start(this)
@@ -41,6 +42,7 @@ class GatewayService : Service() {
     }
 
     override fun onDestroy() {
+        running = false
         server?.stop(); server = null
         Dispatcher.stop()
         wake?.takeIf { it.isHeld }?.release()
@@ -48,6 +50,7 @@ class GatewayService : Service() {
     }
 
     companion object {
+        @Volatile var running = false
         fun start(ctx: Context) = ctx.startForegroundService(Intent(ctx, GatewayService::class.java))
         fun stop(ctx: Context) = ctx.stopService(Intent(ctx, GatewayService::class.java))
     }
