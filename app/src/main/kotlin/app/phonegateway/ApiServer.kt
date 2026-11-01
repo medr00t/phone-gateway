@@ -21,13 +21,23 @@ class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
     private companion object { const val MAX_BODY = 2_000_000 }
 
 
+    // CORS so a web page (the test console, your own back-office) can call the phone directly.
+    // Safe: every real call still needs the secret token, which a page cannot guess.
     override fun serve(session: IHTTPSession): Response {
-        return try {
-            if (!authorized(session)) return json(Response.Status.UNAUTHORIZED, JSONObject().put("error", "token invalide"))
+        if (session.method == Method.OPTIONS) return cors(newFixedLengthResponse(Response.Status.NO_CONTENT, "text/plain", ""))
+        return cors(try {
+            if (!authorized(session)) return cors(json(Response.Status.UNAUTHORIZED, JSONObject().put("error", "token invalide")))
             route(session)
         } catch (e: Exception) {
             json(Response.Status.INTERNAL_ERROR, JSONObject().put("error", e.message ?: "erreur"))
-        }
+        })
+    }
+
+    private fun cors(r: Response): Response {
+        r.addHeader("Access-Control-Allow-Origin", "*")
+        r.addHeader("Access-Control-Allow-Headers", "Authorization, Content-Type")
+        r.addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        return r
     }
 
     private fun route(s: IHTTPSession): Response {

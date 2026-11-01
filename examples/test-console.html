@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Phone Gateway – console de test</title>
+<style>
+ :root{--bg:#f1f5f9;--card:#fff;--ink:#0f172a;--mut:#64748b;--pri:#0f766e;--ok:#15803d;--bad:#b91c1c;--warn:#b45309}
+ *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:15px system-ui,sans-serif;padding:16px}
+ .wrap{max-width:860px;margin:auto;display:grid;gap:12px}
+ .card{background:var(--card);border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px #0001}
+ h1{margin:0 0 4px;font-size:20px} h2{margin:0 0 8px;font-size:16px}
+ label{display:block;font-size:12px;color:var(--mut);margin:8px 0 3px}
+ input,textarea{width:100%;padding:9px 10px;border:1px solid #cbd5e1;border-radius:9px;font:inherit;background:#f8fafc}
+ textarea{min-height:120px;font-family:ui-monospace,monospace;font-size:13px}
+ .row{display:flex;gap:8px;flex-wrap:wrap} .row>*{flex:1;min-width:140px}
+ button{padding:9px 14px;border:0;border-radius:9px;background:var(--pri);color:#fff;font:inherit;cursor:pointer}
+ button.alt{background:#fff;color:var(--pri);border:1px solid var(--pri)} button.call{background:var(--ok)}
+ pre{margin:8px 0 0;background:#0f172a;color:#e2e8f0;border-radius:9px;padding:10px;overflow:auto;max-height:220px;font-size:12px}
+ table{width:100%;border-collapse:collapse;font-size:13px} td,th{text-align:left;padding:6px 4px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+ .chip{display:inline-block;padding:2px 8px;border-radius:20px;color:#fff;font-size:11px;font-weight:700;background:var(--mut)}
+ .DELIVERED,.DONE,.ALIVE{background:var(--ok)} .SENT{background:var(--pri)} .FAILED,.OFFLINE{background:var(--bad)} .VOICEMAIL{background:#6d28d9} .SENDING,.CALLING,.QUEUED{background:var(--warn)}
+</style></head><body><div class="wrap">
+
+<div class="card"><h1>Phone Gateway</h1>
+ <div class="row">
+  <div><label>Adresse du téléphone</label><input id="base" value="http://localhost:8088"></div>
+  <div><label>Jeton</label><input id="token" placeholder="coller le jeton de l'app"></div>
+ </div>
+ <div class="row" style="margin-top:10px"><button onclick="call('GET','/api/status')">Tester la connexion</button></div>
+ <pre id="out">Résultat…</pre>
+</div>
+
+<div class="card"><h2>SMS</h2>
+ <div class="row"><div><label>Numéro</label><input id="to" value="+212600000001"></div>
+ <div><label>Référence (option)</label><input id="ref" placeholder="ticket-12"></div></div>
+ <label>Message</label><input id="text" value="Bonjour, test depuis la console">
+ <div class="row" style="margin-top:10px"><button onclick="sendSms()">Envoyer le SMS</button></div>
+</div>
+
+<div class="card"><h2>Lot de SMS (textes et numéros différents)</h2>
+ <textarea id="batch">{
+  "delayMs": 3000,
+  "messages": [
+    { "to": "+212600000001", "text": "Bonjour Ahmed, rdv confirmé", "ref": "rdv-101" },
+    { "to": "0600000002", "text": "Facture 2026-044 à régler" },
+    { "to": ["+212600000003", "+212600000004"], "text": "Même texte, deux numéros" }
+  ]
+}</textarea>
+ <div class="row" style="margin-top:10px"><button onclick="call('POST','/api/sms/batch',JSON.parse(val('batch')))">Envoyer le lot</button>
+ <button class="alt" onclick="loadFile()">Charger un fichier JSON…</button></div>
+ <input type="file" id="file" accept=".json,application/json" hidden>
+</div>
+
+<div class="card"><h2>Appel</h2>
+ <div class="row"><div><label>Numéro</label><input id="cto" value="+212600000003"></div>
+ <div><label>Raccrocher après (s)</label><input id="hang" type="number" value="25"></div>
+ <div><label>Attendre le SMS du boîtier (s)</label><input id="wait" type="number" value="30"></div></div>
+ <label>Commande à envoyer si le boîtier ne répond pas seul (option, ex. STATUS#)</label><input id="probe">
+ <div class="row" style="margin-top:10px"><button class="call" onclick="sendCall()">Appeler</button></div>
+</div>
+
+<div class="card"><h2>Webhooks</h2>
+ <label>URL de statut des SMS / appels</label><input id="jobhook" placeholder="http://10.0.2.2:9099/hook">
+ <label>URL des SMS reçus</label><input id="smshook" placeholder="http://10.0.2.2:9099/hook">
+ <div class="row" style="margin-top:10px"><button class="alt" onclick="saveHooks()">Enregistrer sur le téléphone</button></div>
+</div>
+
+<div class="card"><h2>Journal <small style="color:var(--mut);font-weight:400">(se met à jour toutes les 3 s)</small></h2>
+ <table><thead><tr><th>Heure</th><th>Type</th><th>Numéro</th><th>Détail</th><th>Statut</th></tr></thead><tbody id="jobs"></tbody></table>
+ <h2 style="margin-top:14px">SMS reçus</h2>
+ <table><tbody id="inbox"></tbody></table>
+</div>
+
+</div>
+<script>
+const $=id=>document.getElementById(id), val=id=>$(id).value.trim();
+try{ $('base').value=localStorage.base||$('base').value; $('token').value=localStorage.token||''; }catch(e){}
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+async function call(method,path,body){
+  try{ localStorage.base=val('base'); localStorage.token=val('token'); }catch(e){}
+  try{
+    const r=await fetch(val('base')+path,{method,headers:{Authorization:'Bearer '+val('token'),'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+    const t=await r.text(); let j; try{j=JSON.stringify(JSON.parse(t),null,2)}catch(e){j=t}
+    $('out').textContent=method+' '+path+'  →  '+r.status+'\n'+j; refresh(); return r;
+  }catch(e){ $('out').textContent='Erreur réseau: '+e.message+'\n(adresse du téléphone correcte ? même réseau ? passerelle démarrée ?)'; }
+}
+function sendSms(){ const o={to:val('to'),text:val('text')}; if(val('ref'))o.ref=val('ref'); call('POST','/api/sms',o); }
+function sendCall(){ call('POST','/api/call',{to:val('cto'),hangupAfterSec:+val('hang'),waitSmsSec:+val('wait'),probeText:val('probe')}); }
+function saveHooks(){ const o={}; if(val('jobhook'))o.jobWebhookUrl=val('jobhook'); if(val('smshook'))o.webhookUrl=val('smshook'); call('POST','/api/settings',o); }
+function loadFile(){ $('file').click(); }
+$('file').onchange=e=>{ const f=e.target.files[0]; if(f) f.text().then(t=>$('batch').value=t); };
+async function refresh(){
+  if(!val('token')) return;
+  try{
+    const h={Authorization:'Bearer '+val('token')};
+    const jobs=(await (await fetch(val('base')+'/api/jobs?limit=30',{headers:h})).json()).jobs||[];
+    $('jobs').innerHTML=jobs.reverse().map(j=>{
+      const d=j.kind==='SMS'?esc(j.text):(j.durationSec>=0?esc((j.outcome||'')+' • '+j.durationSec+'s'):'…');
+      const st=j.verdict||j.status;
+      return `<tr><td>${new Date(j.updatedAt).toLocaleTimeString()}</td><td>${j.kind==='SMS'?'✉':'☎'}</td><td>${esc(j.to)}</td><td>${d}${j.error?'<br><span style="color:var(--bad)">⚠ '+esc(j.error)+'</span>':''}</td><td><span class="chip ${esc(st)}">${esc(st)}</span></td></tr>`}).join('');
+    const ib=(await (await fetch(val('base')+'/api/inbox?since=0',{headers:h})).json()).messages||[];
+    $('inbox').innerHTML=ib.reverse().slice(0,15).map(m=>`<tr><td>${new Date(m.at).toLocaleTimeString()}</td><td>${esc(m.from)}</td><td>${esc(m.text)}</td></tr>`).join('')||'<tr><td style="color:var(--mut)">Aucun</td></tr>';
+  }catch(e){}
+}
+setInterval(refresh,3000); refresh();
+</script></body></html>
