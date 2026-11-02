@@ -44,7 +44,12 @@ A repeated `id` answers `409`, an unknown one `404`. `simNumber` and `ttl` are a
 Client setup (e.g. the hospital back-end, per site): IP of the phone, port `8088`, user `sms`, password = token. No code change.
 
 ## Releases
-`./release.sh 1.2.0` tags `v1.2.0` and pushes it; GitHub Actions runs the tests, builds the APK signed with the permanent key
-and publishes it as a GitHub release (`PhoneGateway-v1.2.0.apk` + SHA-256). Version name comes from the tag, version code from the run number.
+Merging into `main` publishes a release **if `version.txt` holds a version that has no release yet** (change it in the branch you merge,
+e.g. `1.2.0`). GitHub Actions runs the tests, builds the APK signed with the permanent key and publishes it as a GitHub release
+(`PhoneGateway-v1.2.0.apk` + SHA-256). A merge that does not change `version.txt` builds nothing. `./release.sh 1.2.0` (tag push) still works.
 Needed once, in the repo's Settings > Secrets and variables > Actions: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 Keep a backup of the keystore: with another key, phones must uninstall the app before installing an update.
+
+## Retention
+Messages, calls and received SMS are deleted automatically after 30 days (checked when the app opens and every 6 hours).
+

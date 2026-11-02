@@ -44,8 +44,12 @@ object Dispatcher {
         return batchId to jobs
     }
 
-    /** SMSGate-compatible send: the caller's own message id is kept (one receiver) or used as group id (several). */
-    fun enqueueSmsAs(id: String, numbers: List<String>, text: String, delayMs: Long = 2000) {
+    /**
+     * SMSGate-compatible send: the caller's own message id is kept (one receiver) or used as group id (several).
+     * Short pause on purpose: such clients check the result a few seconds after sending, so a burst must not be
+     * spread out over several seconds or the later messages are still pending when they look.
+     */
+    fun enqueueSmsAs(id: String, numbers: List<String>, text: String, delayMs: Long = 100) {
         numbers.forEachIndexed { i, n ->
             val single = numbers.size == 1
             val j = Job(if (single) id else "$id-${i + 1}", Kind.SMS, n, text, null, null, delayMs, groupId = if (single) null else id)

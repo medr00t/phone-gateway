@@ -35,13 +35,21 @@ class GatewayService : Service() {
         if (server == null) {
             server = ApiServer(settings, settings.port).also { it.start(5000, false) }
             Dispatcher.start(this)
+            purgeLoop()
             wake = getSystemService(PowerManager::class.java)
                 .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "phonegateway:service").also { it.acquire() }
         }
         return START_STICKY
     }
 
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private fun purgeLoop() {
+        Thread { Retention.purge(this) }.start()
+        handler.postDelayed({ purgeLoop() }, 6L * 3600 * 1000)
+    }
+
     override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
         running = false
         server?.stop(); server = null
         Dispatcher.stop()

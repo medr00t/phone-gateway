@@ -79,3 +79,27 @@ class BatchIdTest {
         assertEquals(3, b.errors.size)
     }
 }
+
+class RetentionTest {
+    private val day = 24L * 3600 * 1000
+    @Test fun oldFinishedJobsAreDeletedRecentAndRunningStay() {
+        val now = 100 * day
+        fun job(id: String, ageDays: Int, st: Status) = Job(id, Kind.SMS, "+212600000001", "x", createdAt = now - ageDays * day).also { it.status = st }
+        JobStore.add(job("old-done", 31, Status.DELIVERED))
+        JobStore.add(job("old-failed", 40, Status.FAILED))
+        JobStore.add(job("old-queued", 45, Status.QUEUED))
+        JobStore.add(job("recent", 5, Status.DELIVERED))
+        assertEquals(2, JobStore.purge(30 * day, now))
+        assertNull(JobStore.get("old-done"))
+        assertNull(JobStore.get("old-failed"))
+        assertNotNull(JobStore.get("old-queued"))
+        assertNotNull(JobStore.get("recent"))
+    }
+    @Test fun oldReceivedSmsAreDeleted() {
+        val now = 100 * day
+        Inbox.add(InboxMessage("+212600000009", "old", now - 31 * day))
+        Inbox.add(InboxMessage("+212600000009", "new", now - 2 * day))
+        assertEquals(1, Inbox.purge(30 * day, now))
+        assertEquals(listOf("new"), Inbox.since(0, "+212600000009").map { it.text })
+    }
+}

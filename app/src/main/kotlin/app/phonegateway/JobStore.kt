@@ -13,6 +13,7 @@ object JobStore {
     @Synchronized fun init(ctx: Context) {
         if (file != null) return
         Notifier.init(ctx)
+        Inbox.init(ctx)
         file = File(ctx.filesDir, "jobs.json").also { f ->
             if (f.exists()) try {
                 val arr = JSONArray(f.readText())
@@ -44,6 +45,15 @@ object JobStore {
         val arr = JSONArray()
         jobs.values.forEach { arr.put(it.toJson()) }
         try { f.writeText(arr.toString()) } catch (_: Exception) { }
+    }
+
+    /** Removes finished jobs older than [maxAgeMs]; running or queued jobs are never touched. Returns how many went. */
+    @Synchronized fun purge(maxAgeMs: Long, now: Long = System.currentTimeMillis()): Int {
+        val before = jobs.size
+        jobs.values.removeAll { it.createdAt < now - maxAgeMs && it.status != Status.QUEUED && it.status != Status.SENDING && it.status != Status.CALLING }
+        val removed = before - jobs.size
+        if (removed > 0) save()
+        return removed
     }
 
     @Synchronized fun queued(): List<Job> = jobs.values.filter { it.status == Status.QUEUED }
