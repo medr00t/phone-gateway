@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
@@ -23,6 +24,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Switch
@@ -48,6 +50,7 @@ class MainActivity : ComponentActivity() {
     private val bad = Color.parseColor("#B91C1C")
     private val warn = Color.parseColor("#B45309")
     private val violet = Color.parseColor("#6D28D9")
+    private val soft = Color.parseColor("#F1F5F9")
 
     private lateinit var content: FrameLayout
     private lateinit var tabViews: List<TextView>
@@ -55,14 +58,30 @@ class MainActivity : ComponentActivity() {
     private var filter = "ALL"
     private var shownSignature = ""
 
+    private val tabs = listOf(
+        "Accueil" to R.drawable.ic_home,
+        "Messages" to R.drawable.ic_chat,
+        "Autorisations" to R.drawable.ic_shield,
+        "Réglages" to R.drawable.ic_settings,
+    )
+
+    private val permissionNames = linkedMapOf(
+        Manifest.permission.SEND_SMS to "Envoyer des SMS",
+        Manifest.permission.RECEIVE_SMS to "Recevoir des SMS",
+        Manifest.permission.CALL_PHONE to "Passer des appels",
+        Manifest.permission.READ_CALL_LOG to "Journal d'appels",
+        Manifest.permission.READ_PHONE_STATE to "État du téléphone",
+        Manifest.permission.ANSWER_PHONE_CALLS to "Raccrocher les appels",
+        Manifest.permission.POST_NOTIFICATIONS to "Notifications",
+    )
+
+    private val retentionOptions = listOf(7 to "1 semaine", 30 to "1 mois", 60 to "2 mois", 90 to "3 mois")
+
     private val perms = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { shownSignature = ""; refresh() }
     private val pickJson = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { importFile(it) } }
 
     private val allPermissions: List<String> by lazy {
-        val l = mutableListOf(Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS, Manifest.permission.CALL_PHONE,
-            Manifest.permission.READ_CALL_LOG, Manifest.permission.READ_PHONE_STATE, Manifest.permission.ANSWER_PHONE_CALLS)
-        if (android.os.Build.VERSION.SDK_INT >= 33) l.add(Manifest.permission.POST_NOTIFICATIONS)
-        l
+        permissionNames.keys.filter { it != Manifest.permission.POST_NOTIFICATIONS || android.os.Build.VERSION.SDK_INT >= 33 }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,10 +96,14 @@ class MainActivity : ComponentActivity() {
             orientation = LinearLayout.HORIZONTAL
             setBackgroundColor(Color.WHITE); elevation = dp(8).toFloat()
         }
-        val labels = listOf("⌂\nAccueil", "✉\nMessages", "⚙\nRéglages")
-        tabViews = labels.mapIndexed { i, t ->
+        tabViews = tabs.mapIndexed { i, (name, icon) ->
             TextView(this).apply {
-                text = t; textSize = 12f; gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(8))
+                text = name; textSize = 11f; gravity = Gravity.CENTER
+                compoundDrawablePadding = dp(2)
+                setPadding(0, dp(8), 0, dp(8))
+                val d = resources.getDrawable(icon, theme).mutate()
+                d.setBounds(0, 0, dp(24), dp(24))
+                setCompoundDrawables(null, d, null, null)
                 setOnClickListener { select(i) }
                 bar.addView(this, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             }
@@ -109,7 +132,12 @@ class MainActivity : ComponentActivity() {
 
     private fun select(i: Int) {
         tab = i; shownSignature = ""
-        tabViews.forEachIndexed { k, v -> v.setTextColor(if (k == i) primary else muted); v.typeface = if (k == i) Typeface.DEFAULT_BOLD else Typeface.DEFAULT }
+        tabViews.forEachIndexed { k, v ->
+            val color = if (k == i) primary else muted
+            v.setTextColor(color)
+            v.typeface = if (k == i) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            v.compoundDrawables[1]?.setTint(color)
+        }
         refresh()
     }
 
@@ -117,16 +145,18 @@ class MainActivity : ComponentActivity() {
         val sig = when (tab) {
             0 -> homeSignature()
             1 -> messagesSignature()
+            2 -> permissionsSignature()
             else -> "settings"
         }
         if (sig == shownSignature) return
         shownSignature = sig
         content.removeAllViews()
-        content.addView(when (tab) { 0 -> homeView(); 1 -> messagesView(); else -> settingsView() })
+        content.addView(when (tab) { 0 -> homeView(); 1 -> messagesView(); 2 -> permissionsView(); else -> settingsView() })
     }
 
     private fun missingPermissions() = allPermissions.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
     private fun batteryOk() = getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)
+
     private fun homeSignature() = "${GatewayService.running}|${localAddresses()}|${settings.token}|${settings.port}|${missingPermissions().size}|${batteryOk()}"
 
     private fun homeView(): View {
@@ -148,8 +178,7 @@ class MainActivity : ComponentActivity() {
             addView(sw)
         })
 
-        if (missingPermissions().isNotEmpty()) col.addView(notice("Autorisations manquantes", "Autoriser") { perms.launch(allPermissions.toTypedArray()) })
-        if (!batteryOk()) col.addView(notice("Batterie restreinte", "Corriger") { askBatteryExemption() })
+        if (missingPermissions().isNotEmpty() || !batteryOk()) col.addView(notice("Autorisations à vérifier", "Voir") { select(2) })
 
         val addrs = localAddresses()
         if (addrs.isEmpty()) col.addView(label("Aucun réseau"))
@@ -159,7 +188,7 @@ class MainActivity : ComponentActivity() {
         return scroll(col)
     }
 
-    private class Entry(val at: Long, val title: String, val detail: String, val badge: String, val color: Int, val full: String)
+    private class Entry(val at: Long, val icon: Int, val title: String, val detail: String, val badge: String, val color: Int, val full: String)
 
     private fun messagesSignature(): String {
         val jobs = JobStore.all()
@@ -186,10 +215,10 @@ class MainActivity : ComponentActivity() {
                 else -> if (j.durationSec >= 0) "pas de réponse" else "appel…"
             }
             val full = "${if (j.kind == Kind.SMS) j.text else "Appel"}\n\n${j.to}\n${j.verdict ?: j.status.name}${j.error?.let { "\n$it" } ?: ""}\n${fmt.format(Date(j.createdAt))}\nid ${j.id}"
-            list.add(Entry(j.updatedAt, (if (j.kind == Kind.SMS) "✉  " else "☎  ") + j.to, detail + (j.error?.let { "  ⚠" } ?: ""), j.verdict ?: j.status.name, color, full))
+            list.add(Entry(j.updatedAt, if (j.kind == Kind.SMS) R.drawable.ic_chat else R.drawable.ic_call, j.to, detail + (j.error?.let { "  ⚠" } ?: ""), j.verdict ?: j.status.name, color, full))
         }
         if (filter == "ALL" || filter == "RECEIVED") for (m in Inbox.all()) {
-            list.add(Entry(m.at, "⬇  ${m.from}", m.text.take(70), "REÇU", violet, "${m.text}\n\n${m.from}\n${fmt.format(Date(m.at))}"))
+            list.add(Entry(m.at, R.drawable.ic_inbox, m.from, m.text.take(70), "REÇU", violet, "${m.text}\n\n${m.from}\n${fmt.format(Date(m.at))}"))
         }
         return list.sortedByDescending { it.at }.take(300)
     }
@@ -202,7 +231,7 @@ class MainActivity : ComponentActivity() {
             chips.addView(TextView(this).apply {
                 text = name; textSize = 13f; setPadding(dp(14), dp(7), dp(14), dp(7))
                 setTextColor(if (on) Color.WHITE else ink)
-                background = rounded(if (on) primary else Color.parseColor("#F1F5F9"), 20)
+                background = rounded(if (on) primary else soft, 20)
                 setOnClickListener { filter = key; shownSignature = ""; refresh() }
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = dp(8) })
         }
@@ -214,7 +243,9 @@ class MainActivity : ComponentActivity() {
         val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
         items.forEach { e ->
             list.addView(LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL; setPadding(dp(16), dp(12), dp(16), dp(12))
+                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(12), dp(16), dp(12))
+                addView(ImageView(context).apply { setImageResource(e.icon); setColorFilter(muted) },
+                    LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(14) })
                 val left = LinearLayout(context).apply {
                     orientation = LinearLayout.VERTICAL
                     addView(TextView(context).apply { text = e.title; textSize = 15f; setTextColor(ink); typeface = Typeface.DEFAULT_BOLD })
@@ -235,23 +266,63 @@ class MainActivity : ComponentActivity() {
         return root
     }
 
+    private fun permissionsSignature() = "perm|${missingPermissions().joinToString()}|${batteryOk()}"
+
+    private fun permissionsView(): View {
+        val col = column()
+        val missing = missingPermissions()
+        allPermissions.forEach { p -> col.addView(statusRow(permissionNames.getValue(p), p !in missing)) }
+        col.addView(statusRow("Batterie non restreinte", batteryOk()))
+        if (missing.isNotEmpty()) col.addView(button("Autoriser", primary) { perms.launch(allPermissions.toTypedArray()) })
+        if (!batteryOk()) col.addView(button("Désactiver l'optimisation batterie", primary) { askBatteryExemption() })
+        col.addView(button("Réglages de l'application", primary, outline = true) {
+            startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+        })
+        return scroll(col)
+    }
+
     private fun settingsView(): View {
         val col = column()
-        val port = input("Port", InputType.TYPE_CLASS_NUMBER).apply { setText(settings.port.toString()) }
-        val jobHook = input("Webhook statuts", InputType.TYPE_TEXT_VARIATION_URI).apply { setText(settings.jobWebhookUrl) }
-        val smsHook = input("Webhook SMS reçus", InputType.TYPE_TEXT_VARIATION_URI).apply { setText(settings.webhookUrl) }
+        val port = input("8088", InputType.TYPE_CLASS_NUMBER).apply { setText(settings.port.toString()) }
+        val jobHook = input("https://", InputType.TYPE_TEXT_VARIATION_URI).apply { setText(settings.jobWebhookUrl) }
+        val smsHook = input("https://", InputType.TYPE_TEXT_VARIATION_URI).apply { setText(settings.webhookUrl) }
         val auto = Switch(this).apply { isChecked = settings.autostart }
-        col.addView(port); col.addView(jobHook); col.addView(smsHook)
-        col.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-            addView(label("Démarrage automatique"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            addView(auto)
-        })
+        col.addView(fieldLabel("Port")); col.addView(port)
+        col.addView(fieldLabel("Webhook statuts")); col.addView(jobHook)
+        col.addView(fieldLabel("Webhook SMS reçus")); col.addView(smsHook)
+        col.addView(switchRow("Démarrage automatique", auto))
+
+        val retention = Switch(this).apply { isChecked = settings.retentionEnabled }
+        var chosen = retentionOptions.map { it.first }.minByOrNull { Math.abs(it - settings.retentionDays) } ?: 30
+        val optionViews = ArrayList<Pair<Int, TextView>>()
+        fun paint() = optionViews.forEach { (days, v) ->
+            val on = days == chosen
+            v.setTextColor(if (on) Color.WHITE else ink)
+            v.background = rounded(if (on) primary else soft, 20)
+            v.alpha = if (retention.isChecked) 1f else 0.4f
+        }
+        val optionRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        retentionOptions.forEach { (days, name) ->
+            val v = TextView(this).apply {
+                text = name; textSize = 13f; setPadding(dp(14), dp(7), dp(14), dp(7))
+                setOnClickListener { if (retention.isChecked) { chosen = days; paint() } }
+            }
+            optionViews.add(days to v)
+            optionRow.addView(v, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = dp(8) })
+        }
+        retention.setOnCheckedChangeListener { _, _ -> paint() }
+        paint()
+        col.addView(switchRow("Suppression automatique des messages", retention))
+        col.addView(HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(optionRow) })
+
         col.addView(button("Enregistrer", primary) {
             settings.port = port.text.toString().toIntOrNull()?.coerceIn(1024, 65535) ?: 8088
             settings.jobWebhookUrl = jobHook.text.toString()
             settings.webhookUrl = smsHook.text.toString()
             settings.autostart = auto.isChecked
+            settings.retentionEnabled = retention.isChecked
+            settings.retentionDays = chosen
+            Thread { Retention.purge(this) }.start()
             if (GatewayService.running) { GatewayService.stop(this); ui.postDelayed({ GatewayService.start(this) }, 700) }
             toast("Enregistré")
         })
@@ -261,7 +332,7 @@ class MainActivity : ComponentActivity() {
                 .setNegativeButton("Annuler", null).show()
         })
         val version = try { packageManager.getPackageInfo(packageName, 0).versionName } catch (_: Exception) { "" }
-        col.addView(label("v$version  •  messages gardés ${Retention.DAYS} jours").apply { gravity = Gravity.CENTER; setPadding(0, dp(16), 0, 0) })
+        col.addView(label("v$version").apply { gravity = Gravity.CENTER; setPadding(0, dp(16), 0, 0) })
         return scroll(col)
     }
 
@@ -279,7 +350,7 @@ class MainActivity : ComponentActivity() {
 
     @android.annotation.SuppressLint("BatteryLife")
     private fun askBatteryExemption() {
-        startActivity(android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
+        startActivity(Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
     }
 
     private fun localAddresses(): List<Pair<String, String>> = try {
@@ -315,6 +386,8 @@ class MainActivity : ComponentActivity() {
 
     private fun scroll(v: View) = ScrollView(this).apply { addView(v) }
 
+    private fun fieldLabel(t: String) = TextView(this).apply { text = t; textSize = 12f; setTextColor(muted) }
+
     private fun label(t: String) = TextView(this).apply { text = t; textSize = 14f; setTextColor(muted) }
 
     private fun dot(color: Int) = View(this).apply {
@@ -322,9 +395,22 @@ class MainActivity : ComponentActivity() {
         layoutParams = LinearLayout.LayoutParams(dp(12), dp(12)).apply { marginEnd = dp(10) }
     }
 
+    private fun switchRow(text: String, sw: Switch) = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+        addView(TextView(context).apply { this.text = text; textSize = 15f; setTextColor(ink) }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        addView(sw)
+    }
+
+    private fun statusRow(name: String, granted: Boolean) = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(14), dp(12), dp(14), dp(12)); background = rounded(soft, 12)
+        addView(TextView(context).apply { text = name; textSize = 15f; setTextColor(ink) }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        addView(chip(if (granted) "OK" else "Manquante", if (granted) ok else bad))
+    }
+
     private fun copyRow(name: String, value: String) = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(10), dp(14), dp(10))
-        background = rounded(Color.parseColor("#F1F5F9"), 12)
+        background = rounded(soft, 12)
         addView(TextView(context).apply { text = name; textSize = 12f; setTextColor(muted) })
         addView(TextView(context).apply { text = value; textSize = 16f; setTextColor(ink); typeface = Typeface.MONOSPACE })
         setOnClickListener {
@@ -346,7 +432,7 @@ class MainActivity : ComponentActivity() {
 
     private fun input(hint: String, type: Int) = EditText(this).apply {
         this.hint = hint; inputType = type; textSize = 15f; setTextColor(ink)
-        background = rounded(Color.parseColor("#F1F5F9"), 10); setPadding(dp(14), dp(12), dp(14), dp(12))
+        background = rounded(soft, 10); setPadding(dp(14), dp(12), dp(14), dp(12))
     }
 
     private fun button(t: String, color: Int, outline: Boolean = false, onClick: () -> Unit) = Button(this).apply {

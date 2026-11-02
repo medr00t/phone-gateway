@@ -103,3 +103,11 @@ class RetentionTest {
         assertEquals(listOf("new"), Inbox.since(0, "+212600000009").map { it.text })
     }
 }
+
+class RetentionDurationTest {
+    @Test fun daysAreKeptWithinBounds() {
+        assertEquals(30L * 24 * 3600 * 1000, Retention.maxAgeMs(30))
+        assertEquals(Retention.DAY_MS, Retention.maxAgeMs(0))
+        assertEquals(3650L * Retention.DAY_MS, Retention.maxAgeMs(99999))
+    }
+}

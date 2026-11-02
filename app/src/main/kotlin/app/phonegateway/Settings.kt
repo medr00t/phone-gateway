@@ -31,6 +31,14 @@ class Settings(ctx: Context) {
 
     fun regenerateToken() { p.edit().remove("token").apply() }
 
+    var retentionEnabled: Boolean
+        get() = p.getBoolean("retentionEnabled", true)
+        set(v) { p.edit().putBoolean("retentionEnabled", v).apply() }
+
+    var retentionDays: Int
+        get() = p.getInt("retentionDays", 30).coerceIn(1, 3650)
+        set(v) { p.edit().putInt("retentionDays", v.coerceIn(1, 3650)).apply() }
+
     var autostart: Boolean
         get() = p.getBoolean("autostart", true)
         set(v) { p.edit().putBoolean("autostart", v).apply() }

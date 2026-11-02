@@ -11,7 +11,7 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
-        versionName = (project.findProperty("versionName") as String?) ?: "1.0"
+        versionName = (project.findProperty("versionName") as String?) ?: rootProject.file("version.txt").readText().trim()
     }
 
     val keystorePath: String? = System.getenv("KEYSTORE_PATH")
