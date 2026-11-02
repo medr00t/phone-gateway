@@ -18,7 +18,7 @@ Import it from the app (button "Importer un fichier JSON") or via the API.
 ## API (header `Authorization: Bearer <token>`)
 - `GET  /api/status`
 - `POST /api/sms` `{"to","text","ref"}`
-- `POST /api/sms/batch` the JSON above -> `{batchId, accepted, errors[]}`
+- `POST /api/sms/batch` the JSON above -> `{batchId, accepted, messages:[{id,to,status,ref}], errors[]}`. Each message may carry its own `id` (then `GET /message/{id}` shows it alone) and `ref`; an `id` already used is refused for that message only.
 - `POST /api/call` `{"to","hangupAfterSec"}` -> job; result has `durationSec` and `connected` (>0 = picked up)
 - `GET  /api/jobs?batch=&status=&limit=`, `GET /api/jobs/{id}`
 - `GET  /api/inbox?since=<ms>&from=<number>` received SMS (or set a webhook in the app)

@@ -129,9 +129,16 @@ class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
 
     private fun accept(r: ParsedBatch): Response {
         val errs = JSONArray(); r.errors.forEach { errs.put(it) }
-        if (r.items.isEmpty()) return json(Response.Status.BAD_REQUEST, JSONObject().put("error", "aucun message valide").put("errors", errs))
-        val batchId = Dispatcher.enqueueSms(r.items, r.delayMs ?: 2000)
-        return json(Response.Status.ACCEPTED, JSONObject().put("batchId", batchId).put("accepted", r.items.size).put("errors", errs))
+        // a caller-chosen id that already exists is refused for that message only
+        val fresh = r.items.filter { it.id == null || JobStore.byMessage(it.id).isEmpty() }
+        r.items.filter { it !in fresh }.forEach { errs.put("id déjà utilisé: ${it.id}") }
+        if (fresh.isEmpty()) return json(Response.Status.BAD_REQUEST, JSONObject().put("error", "aucun message valide").put("errors", errs))
+        val (batchId, jobs) = Dispatcher.enqueueSms(fresh, r.delayMs ?: 2000)
+        val msgs = JSONArray()
+        jobs.forEach { j ->
+            msgs.put(JSONObject().put("id", j.id).put("to", j.to).put("status", j.status.name).apply { if (j.ref != null) put("ref", j.ref) })
+        }
+        return json(Response.Status.ACCEPTED, JSONObject().put("batchId", batchId).put("accepted", jobs.size).put("messages", msgs).put("errors", errs))
     }
 
     private fun authorized(s: IHTTPSession): Boolean {

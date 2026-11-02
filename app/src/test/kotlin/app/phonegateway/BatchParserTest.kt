@@ -65,3 +65,17 @@ class SmsCompatTest {
         assertEquals("Pending", SmsCompat.aggregate(listOf(Status.QUEUED, Status.QUEUED)))
     }
 }
+
+class BatchIdTest {
+    @Test fun perMessageIdAndRefAreKept() {
+        val b = BatchParser.parse("""[{"id":"notif-1","to":"+212600000001","text":"A","ref":"p-9"},{"to":"+212600000002","text":"B"}]""")
+        assertEquals("notif-1", b.items[0].id)
+        assertEquals("p-9", b.items[0].ref)
+        assertNull(b.items[1].id)
+    }
+    @Test fun badOrDuplicateIdsAreRejected() {
+        val b = BatchParser.parse("""[{"id":"bad id!","to":"+212600000001","text":"A"},{"id":"x","to":"+212600000001","text":"A"},{"id":"x","to":"+212600000002","text":"B"},{"id":"y","to":["+212600000003","+212600000004"],"text":"C"}]""")
+        assertEquals(1, b.items.size)
+        assertEquals(3, b.errors.size)
+    }
+}

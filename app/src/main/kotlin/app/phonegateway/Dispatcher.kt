@@ -34,13 +34,14 @@ object Dispatcher {
 
     fun pending(): Int = queue.size
 
-    fun enqueueSms(items: List<BatchItem>, delayMs: Long): String {
+    /** One job per message; the caller's own id is kept when given. Returns the jobs in order. */
+    fun enqueueSms(items: List<BatchItem>, delayMs: Long): Pair<String, List<Job>> {
         val batchId = UUID.randomUUID().toString().take(8)
-        for (it in items) {
-            val j = Job(UUID.randomUUID().toString().take(12), Kind.SMS, it.to, it.text, it.ref, batchId, delayMs)
-            JobStore.add(j); queue.add(j)
+        val jobs = items.map {
+            val j = Job(it.id ?: UUID.randomUUID().toString().take(12), Kind.SMS, it.to, it.text, it.ref, batchId, delayMs)
+            JobStore.add(j); queue.add(j); j
         }
-        return batchId
+        return batchId to jobs
     }
 
     /** SMSGate-compatible send: the caller's own message id is kept (one receiver) or used as group id (several). */

@@ -5,7 +5,7 @@ import org.json.JSONException
 import org.json.JSONObject
 
 /** One valid message of a batch. */
-data class BatchItem(val to: String, val text: String, val ref: String?)
+data class BatchItem(val to: String, val text: String, val ref: String?, val id: String? = null)
 
 class ParsedBatch(val items: List<BatchItem>, val delayMs: Long?, val errors: List<String>)
 
@@ -16,13 +16,15 @@ class ParsedBatch(val items: List<BatchItem>, val delayMs: Long?, val errors: Li
  *   [ {"to":"+212600000001","text":"Hello A"}, {"to":"0600000002","text":"Hello B"} ]
  *   { "delayMs": 3000, "messages": [ ... ] }
  * Per message: receiver in "to" (also "receiver"/"number"/"phone"), text in "text"
- * (also "message"/"body"), optional "ref". "to" may be an array of numbers to send
+ * (also "message"/"body"), optional "ref" (echoed back) and optional "id" (your own message id, then
+ * readable alone at GET /message/{id}). "to" may be an array of numbers to send
  * the same text to several receivers.
  */
 object BatchParser {
     const val MAX_ITEMS = 1000
     const val MAX_TEXT = 1600           // 10 concatenated SMS
     private val NUMBER = Regex("^\\+?\\d{6,15}$")
+    val ID = Regex("^[A-Za-z0-9_.:#-]{1,100}$")
 
     fun normalizeNumber(raw: String): String? {
         val n = raw.trim().replace(Regex("[\\s().-]"), "")
@@ -51,6 +53,7 @@ object BatchParser {
         }
 
         val items = ArrayList<BatchItem>()
+        val seenIds = HashSet<String>()
         for (i in 0 until arr.length()) {
             val label = "Message ${i + 1}"
             val o = arr.optJSONObject(i)
@@ -68,9 +71,13 @@ object BatchParser {
                 else -> receivers.add(v.toString())
             }
             if (receivers.isEmpty()) { errors.add("$label: destinataire manquant"); continue }
+            val id = if (o.has("id") && !o.isNull("id")) o.get("id").toString() else null
+            if (id != null && !ID.matches(id)) { errors.add("$label: id invalide (lettres, chiffres, _ . : # -, 100 max)"); continue }
+            if (id != null && receivers.size > 1) { errors.add("$label: un id ne peut servir qu'à un seul numéro"); continue }
+            if (id != null && !seenIds.add(id)) { errors.add("$label: id en double dans le lot (\"$id\")"); continue }
             for (r in receivers) {
                 val n = normalizeNumber(r)
-                if (n == null) errors.add("$label: numéro invalide \"$r\"") else items.add(BatchItem(n, text, ref))
+                if (n == null) errors.add("$label: numéro invalide \"$r\"") else items.add(BatchItem(n, text, ref, id))
             }
         }
         return ParsedBatch(items, delay, errors)
