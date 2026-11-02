@@ -34,6 +34,9 @@ object JobStore {
 
     @Synchronized fun get(id: String): Job? = jobs[id]
 
+    /** The jobs of one SMSGate-style message: the job with that id, or the group sharing it. */
+    @Synchronized fun byMessage(id: String): List<Job> = jobs.values.filter { it.id == id || it.groupId == id }
+
     @Synchronized fun all(): List<Job> = jobs.values.toList()
 
     @Synchronized fun save() {

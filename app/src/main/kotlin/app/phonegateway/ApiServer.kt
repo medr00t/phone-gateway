@@ -9,6 +9,7 @@ import java.security.MessageDigest
 /**
  * HTTP API of the phone. Every call needs the token: header "Authorization: Bearer <token>".
  *
+ *   SMSGate-compatible: POST /message, GET /message/{id}  (Basic auth, password = token)
  *   GET  /api/status
  *   POST /api/sms          {"to":"+2126...","text":"...","ref":"x"}
  *   POST /api/sms/batch    [ {"to","text"}, ... ]  or  {"delayMs":3000,"messages":[...]}
@@ -80,6 +81,14 @@ class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
                 json(Response.Status.OK, j.toJson())
             }
 
+            post && path == "/message" -> compatSend(s)
+            get && path.startsWith("/message/") -> {
+                val id = path.removePrefix("/message/")
+                val jobs = JobStore.byMessage(id)
+                if (jobs.isEmpty()) json(Response.Status.NOT_FOUND, JSONObject().put("error", "message inconnu"))
+                else json(Response.Status.OK, SmsCompat.response(id, jobs))
+            }
+
             get && path == "/api/settings" -> json(Response.Status.OK, JSONObject()
                 .put("jobWebhookUrl", settings.jobWebhookUrl).put("webhookUrl", settings.webhookUrl))
             post && path == "/api/settings" -> {
@@ -102,6 +111,22 @@ class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
         }
     }
 
+    // SMSGate "local server" API, so a client written for it (e.g. the hospital back-end) works unchanged.
+    private fun compatSend(s: IHTTPSession): Response {
+        val o = parseObject(s) ?: return bad("JSON invalide")
+        val text = o.optJSONObject("textMessage")?.optString("text", "") ?: ""
+        if (text.isEmpty()) return bad("textMessage.text manquant")
+        if (text.length > BatchParser.MAX_TEXT) return bad("texte trop long")
+        val arr = o.optJSONArray("phoneNumbers") ?: return bad("phoneNumbers manquant")
+        if (arr.length() == 0 || arr.length() > 100) return bad("phoneNumbers: 1 à 100 numéros")
+        val numbers = (0 until arr.length()).map { BatchParser.normalizeNumber(arr.optString(it)) ?: return bad("numéro invalide: ${arr.optString(it)}") }
+        val id = o.optString("id", "").ifEmpty { java.util.UUID.randomUUID().toString().take(16) }
+        if (!Regex("^[A-Za-z0-9_.:#-]{1,100}$").matches(id)) return bad("id invalide")
+        if (JobStore.byMessage(id).isNotEmpty()) return json(Response.Status.CONFLICT, JSONObject().put("error", "id déjà utilisé"))
+        Dispatcher.enqueueSmsAs(id, numbers, text)
+        return json(Response.Status.ACCEPTED, SmsCompat.response(id, JobStore.byMessage(id)))
+    }
+
     private fun accept(r: ParsedBatch): Response {
         val errs = JSONArray(); r.errors.forEach { errs.put(it) }
         if (r.items.isEmpty()) return json(Response.Status.BAD_REQUEST, JSONObject().put("error", "aucun message valide").put("errors", errs))
@@ -111,7 +136,14 @@ class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
 
     private fun authorized(s: IHTTPSession): Boolean {
         val h = s.headers["authorization"] ?: ""
-        val given = if (h.startsWith("Bearer ", true)) h.substring(7).trim() else ""
+        val given = when {
+            h.startsWith("Bearer ", true) -> h.substring(7).trim()
+            // SMSGate-compatible clients send Basic auth: any user name, the token as password
+            h.startsWith("Basic ", true) -> try {
+                String(java.util.Base64.getDecoder().decode(h.substring(6).trim()), Charsets.UTF_8).substringAfter(':', "")
+            } catch (_: IllegalArgumentException) { "" }
+            else -> ""
+        }
         return MessageDigest.isEqual(given.toByteArray(), settings.token.toByteArray())
     }
 

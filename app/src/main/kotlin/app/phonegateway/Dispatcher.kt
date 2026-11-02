@@ -43,6 +43,15 @@ object Dispatcher {
         return batchId
     }
 
+    /** SMSGate-compatible send: the caller's own message id is kept (one receiver) or used as group id (several). */
+    fun enqueueSmsAs(id: String, numbers: List<String>, text: String, delayMs: Long = 2000) {
+        numbers.forEachIndexed { i, n ->
+            val single = numbers.size == 1
+            val j = Job(if (single) id else "$id-${i + 1}", Kind.SMS, n, text, null, null, delayMs, groupId = if (single) null else id)
+            JobStore.add(j); queue.add(j)
+        }
+    }
+
     /** probeText: optional SMS to send when the tracker does not text back by itself (e.g. "STATUS#"). */
     fun enqueueCall(to: String, ref: String?, hangupAfterSec: Int, waitSmsSec: Int = 30, probeText: String = ""): Job {
         val j = Job(UUID.randomUUID().toString().take(12), Kind.CALL, to, probeText, ref, null, 3000, hangupAfterSec, waitSmsSec)

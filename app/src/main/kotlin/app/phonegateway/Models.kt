@@ -18,6 +18,7 @@ class Job(
     val delayMs: Long = 2000,         // pause after this job, before the next one
     val hangupAfterSec: Int = 25,     // calls only
     val waitSmsSec: Int = 30,         // calls only: how long to wait for the tracker's SMS reply
+    val groupId: String? = null,      // SMSGate-compatible message with several receivers: one job each
     val createdAt: Long = System.currentTimeMillis(),
 ) {
     @Volatile var status: Status = Status.QUEUED
@@ -44,6 +45,7 @@ class Job(
         if (kind == Kind.SMS) put("text", text)
         if (ref != null) put("ref", ref)
         if (batchId != null) put("batchId", batchId)
+        if (groupId != null) put("groupId", groupId)
         put("status", status.name)
         if (error != null) put("error", error)
         if (kind == Kind.CALL && durationSec >= 0) {
@@ -64,6 +66,7 @@ class Job(
             text = o.optString("text", ""),
             ref = if (o.has("ref")) o.getString("ref") else null,
             batchId = if (o.has("batchId")) o.getString("batchId") else null,
+            groupId = if (o.has("groupId")) o.getString("groupId") else null,
             createdAt = o.optLong("createdAt", System.currentTimeMillis()),
         ).also {
             it.status = Status.valueOf(o.optString("status", "QUEUED"))

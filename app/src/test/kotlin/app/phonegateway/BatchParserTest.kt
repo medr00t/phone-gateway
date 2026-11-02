@@ -49,3 +49,19 @@ class CallVerdictTest {
     @Test fun rejectedWithSmsIsAlive() = assertEquals("ALIVE", CallVerdict.decide(false, true))
     @Test fun rejectedWithoutSmsIsOffline() = assertEquals("OFFLINE", CallVerdict.decide(false, false))
 }
+
+class SmsCompatTest {
+    @Test fun statesMatchSmsGate() {
+        assertEquals("Pending", SmsCompat.state(Status.QUEUED))
+        assertEquals("Sent", SmsCompat.state(Status.SENT))
+        assertEquals("Delivered", SmsCompat.state(Status.DELIVERED))
+        assertEquals("Failed", SmsCompat.state(Status.FAILED))
+    }
+    @Test fun severalReceivers() {
+        assertEquals("Failed", SmsCompat.aggregate(listOf(Status.DELIVERED, Status.FAILED)))
+        assertEquals("Delivered", SmsCompat.aggregate(listOf(Status.DELIVERED, Status.DELIVERED)))
+        assertEquals("Sent", SmsCompat.aggregate(listOf(Status.SENT, Status.DELIVERED)))
+        assertEquals("Processed", SmsCompat.aggregate(listOf(Status.SENT, Status.QUEUED)))
+        assertEquals("Pending", SmsCompat.aggregate(listOf(Status.QUEUED, Status.QUEUED)))
+    }
+}

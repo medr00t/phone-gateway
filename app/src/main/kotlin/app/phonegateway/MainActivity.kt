@@ -100,6 +100,7 @@ class MainActivity : ComponentActivity() {
             heading("Connexion"),
             urlsBox,
             tokenView,
+            small("Compatible SMSGate : utilisateur  sms  •  mot de passe = jeton"),
             row(
                 button("Copier le jeton", primary, outline = true) { copy("Jeton", settings.token) },
                 button("Nouveau jeton", bad, outline = true) { settings.regenerateToken(); refresh() },

@@ -36,3 +36,9 @@ Every POST carries header `X-Gateway-Token: <token>`; 3 tries (2 s, 10 s, 30 s) 
 - `OFFLINE`: rejected and no SMS -> SIM without credit, or box off / unplugged
 `probeText` (optional, e.g. `STATUS#`) is texted to the SIM if it did not answer by itself, then the wait restarts.
 Not every tracker texts back after a call (GT06/TK103 usually do; a Teltonika needs its call/SMS settings checked, or a probe command).
+
+## SMSGate-compatible API (drop-in for clients written for SMSGate's local server)
+`POST /message` and `GET /message/{id}`, Basic auth: any user name (the app shows `sms`), password = the token.
+Request: `{"id","textMessage":{"text"},"phoneNumbers":[…],"withDeliveryReport"}`; answer: `{"id","state":"Pending|Processed|Sent|Delivered|Failed","recipients":[{"phoneNumber","state","error"}]}`.
+A repeated `id` answers `409`, an unknown one `404`. `simNumber` and `ttl` are accepted and ignored.
+Client setup (e.g. the hospital back-end, per site): IP of the phone, port `8088`, user `sms`, password = token. No code change.
