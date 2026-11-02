@@ -4,7 +4,6 @@ import android.content.Context
 import java.util.UUID
 import java.util.concurrent.LinkedBlockingQueue
 
-/** One worker thread: jobs run one at a time, with a pause between them (carriers block bursts). */
 object Dispatcher {
     private val queue = LinkedBlockingQueue<Job>()
     @Volatile private var worker: Thread? = null
@@ -12,7 +11,7 @@ object Dispatcher {
     @Synchronized fun start(ctx: Context) {
         if (worker?.isAlive == true) return
         val app = ctx.applicationContext
-        JobStore.queued().forEach { if (!queue.contains(it)) queue.add(it) }   // resume after a restart
+        JobStore.queued().forEach { if (!queue.contains(it)) queue.add(it) }
         worker = Thread {
             while (!Thread.currentThread().isInterrupted) {
                 val job = try { queue.take() } catch (_: InterruptedException) { break }
@@ -34,7 +33,6 @@ object Dispatcher {
 
     fun pending(): Int = queue.size
 
-    /** One job per message; the caller's own id is kept when given. Returns the jobs in order. */
     fun enqueueSms(items: List<BatchItem>, delayMs: Long): Pair<String, List<Job>> {
         val batchId = UUID.randomUUID().toString().take(8)
         val jobs = items.map {
@@ -44,11 +42,6 @@ object Dispatcher {
         return batchId to jobs
     }
 
-    /**
-     * SMSGate-compatible send: the caller's own message id is kept (one receiver) or used as group id (several).
-     * Short pause on purpose: such clients check the result a few seconds after sending, so a burst must not be
-     * spread out over several seconds or the later messages are still pending when they look.
-     */
     fun enqueueSmsAs(id: String, numbers: List<String>, text: String, delayMs: Long = 100) {
         numbers.forEachIndexed { i, n ->
             val single = numbers.size == 1
@@ -57,7 +50,6 @@ object Dispatcher {
         }
     }
 
-    /** probeText: optional SMS to send when the tracker does not text back by itself (e.g. "STATUS#"). */
     fun enqueueCall(to: String, ref: String?, hangupAfterSec: Int, waitSmsSec: Int = 30, probeText: String = ""): Job {
         val j = Job(UUID.randomUUID().toString().take(12), Kind.CALL, to, probeText, ref, null, 3000, hangupAfterSec, waitSmsSec)
         JobStore.add(j); queue.add(j)

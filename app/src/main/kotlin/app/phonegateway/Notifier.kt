@@ -5,7 +5,6 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
 
-/** Pushes events to the operator's server: one thread (order kept), 3 tries per event. */
 object Notifier {
     private var settings: Settings? = null
     private val pool = Executors.newSingleThreadExecutor { r -> Thread(r, "gateway-notifier").apply { isDaemon = true } }

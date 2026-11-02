@@ -7,26 +7,25 @@ enum class Kind { SMS, CALL }
 
 enum class Status { QUEUED, SENDING, SENT, DELIVERED, FAILED, CALLING, DONE }
 
-/** One thing to do: send one SMS or place one call. */
 class Job(
     val id: String,
     val kind: Kind,
     val to: String,
     val text: String,
-    val ref: String? = null,          // caller's own reference, echoed back
+    val ref: String? = null,
     val batchId: String? = null,
-    val delayMs: Long = 2000,         // pause after this job, before the next one
-    val hangupAfterSec: Int = 25,     // calls only
-    val waitSmsSec: Int = 30,         // calls only: how long to wait for the tracker's SMS reply
-    val groupId: String? = null,      // SMSGate-compatible message with several receivers: one job each
+    val delayMs: Long = 2000,
+    val hangupAfterSec: Int = 25,
+    val waitSmsSec: Int = 30,
+    val groupId: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
 ) {
     @Volatile var status: Status = Status.QUEUED
     @Volatile var error: String? = null
     @Volatile var updatedAt: Long = createdAt
-    @Volatile var durationSec: Int = -1       // calls: seconds the line was connected (0 = never answered)
-    @Volatile var connected: Boolean? = null  // calls: true when somebody/something picked up
-    @Volatile var verdict: String? = null     // calls: VOICEMAIL / ALIVE / OFFLINE
+    @Volatile var durationSec: Int = -1
+    @Volatile var connected: Boolean? = null
+    @Volatile var verdict: String? = null
     val partsTotal = AtomicInteger(0)
     val partsSent = AtomicInteger(0)
     val partsDelivered = AtomicInteger(0)

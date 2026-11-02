@@ -4,7 +4,6 @@ import android.content.Context
 import org.json.JSONArray
 import java.io.File
 
-/** All jobs, newest last. Kept in memory and saved to a file so a restart keeps the history. */
 object JobStore {
     private const val MAX = 5000
     private val jobs = LinkedHashMap<String, Job>()
@@ -19,11 +18,11 @@ object JobStore {
                 val arr = JSONArray(f.readText())
                 for (i in 0 until arr.length()) {
                     val j = Job.fromJson(arr.getJSONObject(i))
-                    // A job that was running when the app died cannot be trusted any more.
+
                     if (j.status == Status.SENDING || j.status == Status.CALLING) j.set(Status.FAILED, "interrompu (redémarrage)")
                     jobs[j.id] = j
                 }
-            } catch (_: Exception) { /* unreadable history: start clean */ }
+            } catch (_: Exception) {  }
         }
     }
 
@@ -35,7 +34,6 @@ object JobStore {
 
     @Synchronized fun get(id: String): Job? = jobs[id]
 
-    /** The jobs of one SMSGate-style message: the job with that id, or the group sharing it. */
     @Synchronized fun byMessage(id: String): List<Job> = jobs.values.filter { it.id == id || it.groupId == id }
 
     @Synchronized fun all(): List<Job> = jobs.values.toList()
@@ -47,7 +45,6 @@ object JobStore {
         try { f.writeText(arr.toString()) } catch (_: Exception) { }
     }
 
-    /** Removes finished jobs older than [maxAgeMs]; running or queued jobs are never touched. Returns how many went. */
     @Synchronized fun purge(maxAgeMs: Long, now: Long = System.currentTimeMillis()): Int {
         val before = jobs.size
         jobs.values.removeAll { it.createdAt < now - maxAgeMs && it.status != Status.QUEUED && it.status != Status.SENDING && it.status != Status.CALLING }

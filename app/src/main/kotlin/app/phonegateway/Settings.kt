@@ -3,7 +3,6 @@ package app.phonegateway
 import android.content.Context
 import java.security.SecureRandom
 
-/** Token, port and optional webhook, kept in private preferences. */
 class Settings(ctx: Context) {
     private val p = ctx.applicationContext.getSharedPreferences("gateway", Context.MODE_PRIVATE)
 
@@ -11,12 +10,10 @@ class Settings(ctx: Context) {
         get() = p.getInt("port", 8088)
         set(v) { p.edit().putInt("port", v).apply() }
 
-    /** Incoming SMS are POSTed here as JSON when set (e.g. a box answering a call). */
     var webhookUrl: String
         get() = p.getString("webhook", "") ?: ""
         set(v) { p.edit().putString("webhook", v.trim()).apply() }
 
-    /** Final status of every SMS / call is POSTed here as JSON. */
     var jobWebhookUrl: String
         get() = p.getString("jobWebhook", "") ?: ""
         set(v) { p.edit().putString("jobWebhook", v.trim()).apply() }

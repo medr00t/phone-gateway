@@ -107,8 +107,6 @@ class MainActivity : ComponentActivity() {
         return super.onOptionsItemSelected(item)
     }
 
-    // ───────────────────────── tabs ─────────────────────────
-
     private fun select(i: Int) {
         tab = i; shownSignature = ""
         tabViews.forEachIndexed { k, v -> v.setTextColor(if (k == i) primary else muted); v.typeface = if (k == i) Typeface.DEFAULT_BOLD else Typeface.DEFAULT }
@@ -126,8 +124,6 @@ class MainActivity : ComponentActivity() {
         content.removeAllViews()
         content.addView(when (tab) { 0 -> homeView(); 1 -> messagesView(); else -> settingsView() })
     }
-
-    // ───────────────────────── Accueil ─────────────────────────
 
     private fun missingPermissions() = allPermissions.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
     private fun batteryOk() = getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)
@@ -162,8 +158,6 @@ class MainActivity : ComponentActivity() {
         col.addView(copyRow("Mot de passe", settings.token))
         return scroll(col)
     }
-
-    // ───────────────────────── Messages ─────────────────────────
 
     private class Entry(val at: Long, val title: String, val detail: String, val badge: String, val color: Int, val full: String)
 
@@ -241,8 +235,6 @@ class MainActivity : ComponentActivity() {
         return root
     }
 
-    // ───────────────────────── Réglages ─────────────────────────
-
     private fun settingsView(): View {
         val col = column()
         val port = input("Port", InputType.TYPE_CLASS_NUMBER).apply { setText(settings.port.toString()) }
@@ -272,8 +264,6 @@ class MainActivity : ComponentActivity() {
         col.addView(label("v$version  •  messages gardés ${Retention.DAYS} jours").apply { gravity = Gravity.CENTER; setPadding(0, dp(16), 0, 0) })
         return scroll(col)
     }
-
-    // ───────────────────────── actions ─────────────────────────
 
     private fun importFile(uri: Uri) {
         val text = try { contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() } ?: "" }
@@ -309,13 +299,10 @@ class MainActivity : ComponentActivity() {
         }
     } catch (_: Exception) { emptyList() }
 
-    // ───────────────────────── small UI kit ─────────────────────────
-
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private fun rounded(color: Int, r: Int) = GradientDrawable().apply { setColor(color); cornerRadius = dp(r).toFloat() }
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_LONG).show()
 
-    /** Vertical page; every child but the first gets the same gap above it. */
     private fun column() = object : LinearLayout(this) {
         override fun addView(child: View?) {
             if (child != null && childCount > 0) {

@@ -4,25 +4,13 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-/** One valid message of a batch. */
 data class BatchItem(val to: String, val text: String, val ref: String?, val id: String? = null)
 
 class ParsedBatch(val items: List<BatchItem>, val delayMs: Long?, val errors: List<String>)
 
-/**
- * Reads a JSON batch of SMS, each with its own receiver and its own text.
- *
- * Accepted shapes:
- *   [ {"to":"+212600000001","text":"Hello A"}, {"to":"0600000002","text":"Hello B"} ]
- *   { "delayMs": 3000, "messages": [ ... ] }
- * Per message: receiver in "to" (also "receiver"/"number"/"phone"), text in "text"
- * (also "message"/"body"), optional "ref" (echoed back) and optional "id" (your own message id, then
- * readable alone at GET /message/{id}). "to" may be an array of numbers to send
- * the same text to several receivers.
- */
 object BatchParser {
     const val MAX_ITEMS = 1000
-    const val MAX_TEXT = 1600           // 10 concatenated SMS
+    const val MAX_TEXT = 1600
     private val NUMBER = Regex("^\\+?\\d{6,15}$")
     val ID = Regex("^[A-Za-z0-9_.:#-]{1,100}$")
 

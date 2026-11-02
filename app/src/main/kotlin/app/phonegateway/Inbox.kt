@@ -10,7 +10,6 @@ class InboxMessage(val from: String, val text: String, val at: Long) {
     fun toJson(): JSONObject = JSONObject().put("from", from).put("text", text).put("at", at)
 }
 
-/** Received SMS: kept in memory and in a file (so the list survives a restart), purged by [Retention]. */
 object Inbox {
     private const val MAX = 2000
     private val items = ArrayList<InboxMessage>()
@@ -22,7 +21,7 @@ object Inbox {
             if (f.exists()) try {
                 val arr = org.json.JSONArray(f.readText())
                 for (i in 0 until arr.length()) { val o = arr.getJSONObject(i); items.add(InboxMessage(o.getString("from"), o.getString("text"), o.getLong("at"))) }
-            } catch (_: Exception) { /* unreadable: start clean */ }
+            } catch (_: Exception) {  }
         }
     }
 

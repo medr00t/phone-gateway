@@ -6,24 +6,9 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.security.MessageDigest
 
-/**
- * HTTP API of the phone. Every call needs the token: header "Authorization: Bearer <token>".
- *
- *   SMSGate-compatible: POST /message, GET /message/{id}  (Basic auth, password = token)
- *   GET  /api/status
- *   POST /api/sms          {"to":"+2126...","text":"...","ref":"x"}
- *   POST /api/sms/batch    [ {"to","text"}, ... ]  or  {"delayMs":3000,"messages":[...]}
- *   POST /api/call         {"to":"+2126...","hangupAfterSec":25,"waitSmsSec":30,"probeText":"STATUS#","ref":"x"}
- *   GET  /api/jobs?batch=&status=&limit=       GET /api/jobs/{id}
- *   GET  /api/inbox?since=<ms>&from=<number>
- *   GET|POST /api/settings  {"jobWebhookUrl":"http://…","webhookUrl":"http://…"}
- */
 class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
     private companion object { const val MAX_BODY = 2_000_000 }
 
-
-    // CORS so a web page (the test console, your own back-office) can call the phone directly.
-    // Safe: every real call still needs the secret token, which a page cannot guess.
     override fun serve(session: IHTTPSession): Response {
         if (session.method == Method.OPTIONS) return cors(newFixedLengthResponse(Response.Status.NO_CONTENT, "text/plain", ""))
         return cors(try {
@@ -111,7 +96,6 @@ class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
         }
     }
 
-    // SMSGate "local server" API, so a client written for it (e.g. the hospital back-end) works unchanged.
     private fun compatSend(s: IHTTPSession): Response {
         val o = parseObject(s) ?: return bad("JSON invalide")
         val text = o.optJSONObject("textMessage")?.optString("text", "") ?: ""
@@ -129,7 +113,7 @@ class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
 
     private fun accept(r: ParsedBatch): Response {
         val errs = JSONArray(); r.errors.forEach { errs.put(it) }
-        // a caller-chosen id that already exists is refused for that message only
+
         val fresh = r.items.filter { it.id == null || JobStore.byMessage(it.id).isEmpty() }
         r.items.filter { it !in fresh }.forEach { errs.put("id déjà utilisé: ${it.id}") }
         if (fresh.isEmpty()) return json(Response.Status.BAD_REQUEST, JSONObject().put("error", "aucun message valide").put("errors", errs))
@@ -145,7 +129,7 @@ class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
         val h = s.headers["authorization"] ?: ""
         val given = when {
             h.startsWith("Bearer ", true) -> h.substring(7).trim()
-            // SMSGate-compatible clients send Basic auth: any user name, the token as password
+
             h.startsWith("Basic ", true) -> try {
                 String(java.util.Base64.getDecoder().decode(h.substring(6).trim()), Charsets.UTF_8).substringAfter(':', "")
             } catch (_: IllegalArgumentException) { "" }
@@ -154,8 +138,6 @@ class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
         return MessageDigest.isEqual(given.toByteArray(), settings.token.toByteArray())
     }
 
-    // Read the raw bytes and decode them as UTF-8 ourselves: NanoHTTPD decodes as US-ASCII when the
-    // client sends no charset, which turned every accent of a French SMS into "��".
     private fun body(s: IHTTPSession): String {
         val len = s.headers["content-length"]?.toIntOrNull() ?: 0
         if (len <= 0) return ""
