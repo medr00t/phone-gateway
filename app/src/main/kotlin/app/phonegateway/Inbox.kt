@@ -10,19 +10,47 @@ class InboxMessage(val from: String, val text: String, val at: Long) {
     fun toJson(): JSONObject = JSONObject().put("from", from).put("text", text).put("at", at)
 }
 
-/** Last received SMS, in memory (the caller polls /api/inbox, or gets them by webhook). */
 object Inbox {
-    private const val MAX = 500
+    private const val MAX = 2000
     private val items = ArrayList<InboxMessage>()
-    @Synchronized fun add(m: InboxMessage) { items.add(m); while (items.size > MAX) items.removeAt(0) }
+    private var file: java.io.File? = null
+
+    @Synchronized fun init(ctx: Context) {
+        if (file != null) return
+        file = java.io.File(ctx.filesDir, "inbox.json").also { f ->
+            if (f.exists()) try {
+                val arr = org.json.JSONArray(f.readText())
+                for (i in 0 until arr.length()) { val o = arr.getJSONObject(i); items.add(InboxMessage(o.getString("from"), o.getString("text"), o.getLong("at"))) }
+            } catch (_: Exception) {  }
+        }
+    }
+
+    @Synchronized fun add(m: InboxMessage) { items.add(m); while (items.size > MAX) items.removeAt(0); save() }
+
+    @Synchronized fun all(): List<InboxMessage> = items.toList()
+
+    @Synchronized fun purge(maxAgeMs: Long, now: Long = System.currentTimeMillis()): Int {
+        val before = items.size
+        items.removeAll { it.at < now - maxAgeMs }
+        if (before != items.size) save()
+        return before - items.size
+    }
+
     @Synchronized fun since(at: Long, from: String?): List<InboxMessage> {
         val tail = from?.filter { it.isDigit() }?.takeLast(8)
         return items.filter { it.at > at && (tail == null || it.from.filter { c -> c.isDigit() }.endsWith(tail)) }
+    }
+
+    private fun save() {
+        val f = file ?: return
+        val arr = org.json.JSONArray(); items.forEach { arr.put(it.toJson()) }
+        try { f.writeText(arr.toString()) } catch (_: Exception) { }
     }
 }
 
 class SmsInboxReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
+        JobStore.init(ctx)
         val parts = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return
         if (parts.isEmpty()) return
         val from = parts[0].originatingAddress ?: return

@@ -3,7 +3,6 @@ package app.phonegateway
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** The answer shape of the SMSGate "local server" API (POST /message, GET /message/{id}). */
 object SmsCompat {
     fun state(s: Status): String = when (s) {
         Status.QUEUED -> "Pending"
@@ -14,7 +13,6 @@ object SmsCompat {
         else -> "Pending"
     }
 
-    /** One state for a message with several receivers. */
     fun aggregate(statuses: List<Status>): String = when {
         statuses.isEmpty() -> "Pending"
         statuses.any { it == Status.FAILED } -> "Failed"

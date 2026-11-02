@@ -13,8 +13,7 @@ android {
         versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
         versionName = (project.findProperty("versionName") as String?) ?: "1.0"
     }
-    // Release signing comes from the environment (CI secrets or a local keystore); without it the
-    // release build falls back to the debug key so it still builds and installs for testing.
+
     val keystorePath: String? = System.getenv("KEYSTORE_PATH")
     signingConfigs {
         if (keystorePath != null) {

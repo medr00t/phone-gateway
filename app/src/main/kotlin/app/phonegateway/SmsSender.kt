@@ -26,7 +26,6 @@ object SmsSender {
         sm.sendMultipartTextMessage(job.to, null, parts, sent, delivered)
     }
 
-    /** Fire-and-forget SMS (no job): used by a call's probe. */
     @Suppress("DEPRECATION")
     fun sendRaw(ctx: Context, to: String, text: String) {
         val sm = if (Build.VERSION.SDK_INT >= 31) ctx.getSystemService(SmsManager::class.java) else SmsManager.getDefault()
@@ -40,7 +39,6 @@ object SmsSender {
     }
 }
 
-/** Android reports each SMS part here: sent (or why not) and, if the carrier tells us, delivered. */
 class SmsResultReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         JobStore.init(ctx)
@@ -61,7 +59,6 @@ class SmsResultReceiver : BroadcastReceiver() {
     }
 }
 
-/** Android's SmsManager result codes, named. */
 fun sendError(code: Int, radioCode: Int): String {
     val name = when (code) {
         1 -> "GENERIC_FAILURE (échec générique, souvent pas de crédit/forfait ou SIM bloquée)"

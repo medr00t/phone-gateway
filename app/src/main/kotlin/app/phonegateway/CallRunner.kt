@@ -9,12 +9,6 @@ import android.provider.CallLog
 import android.telecom.TelecomManager
 import android.telephony.TelephonyManager
 
-/**
- * Places a call, hangs up after [Job.hangupAfterSec], then reads the phone's call log:
- * a duration above 0 means the line was picked up (a person or a voicemail); 0 means it was
- * rejected / never answered. A GPS tracker rejects the call and answers by SMS, so
- * "durationSec = 0" followed by an incoming SMS from that number = tracker alive.
- */
 object CallRunner {
     @Suppress("DEPRECATION", "MissingPermission")
     fun run(ctx: Context, job: Job) {
@@ -34,7 +28,6 @@ object CallRunner {
         val start = System.currentTimeMillis()
         telecom.placeCall(Uri.fromParts("tel", job.to, null), Bundle())
 
-        // wait for the line to open, then for it to close by itself or for the hang-up delay
         val begin = System.currentTimeMillis()
         while (tm.callState == TelephonyManager.CALL_STATE_IDLE && System.currentTimeMillis() - begin < 5000) Thread.sleep(250)
         val deadline = System.currentTimeMillis() + job.hangupAfterSec * 1000L
@@ -42,7 +35,7 @@ object CallRunner {
         if (tm.callState != TelephonyManager.CALL_STATE_IDLE) {
             try { telecom.endCall() } catch (_: SecurityException) { }
         }
-        // the log entry is written a moment after the line closes
+
         Thread.sleep(3000)
 
         val last8 = job.to.filter { it.isDigit() }.takeLast(8)
@@ -64,7 +57,6 @@ object CallRunner {
         job.set(Status.FAILED, "appel introuvable dans le journal d'appels")
     }
 
-    /** A rejected call to a tracker: it usually texts its position back. Wait for it, then optionally prompt it. */
     private fun waitForSms(ctx: Context, job: Job, since: Long): Boolean {
         fun wait(sec: Int): Boolean {
             val end = System.currentTimeMillis() + sec * 1000L
@@ -76,7 +68,7 @@ object CallRunner {
         }
         if (job.waitSmsSec <= 0) return false
         if (wait(job.waitSmsSec)) return true
-        if (job.text.isNotBlank()) {            // text = the probe command for calls
+        if (job.text.isNotBlank()) {
             SmsSender.sendRaw(ctx, job.to, job.text)
             return wait(job.waitSmsSec)
         }

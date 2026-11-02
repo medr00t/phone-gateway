@@ -10,7 +10,6 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.os.PowerManager
 
-/** Keeps the HTTP API and the queue alive while the screen is off. */
 class GatewayService : Service() {
     private var server: ApiServer? = null
     private var wake: PowerManager.WakeLock? = null
@@ -35,13 +34,21 @@ class GatewayService : Service() {
         if (server == null) {
             server = ApiServer(settings, settings.port).also { it.start(5000, false) }
             Dispatcher.start(this)
+            purgeLoop()
             wake = getSystemService(PowerManager::class.java)
                 .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "phonegateway:service").also { it.acquire() }
         }
         return START_STICKY
     }
 
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private fun purgeLoop() {
+        Thread { Retention.purge(this) }.start()
+        handler.postDelayed({ purgeLoop() }, 6L * 3600 * 1000)
+    }
+
     override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
         running = false
         server?.stop(); server = null
         Dispatcher.stop()
@@ -59,7 +66,7 @@ class GatewayService : Service() {
 class BootReceiver : android.content.BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED && Settings(ctx).autostart) {
-            try { GatewayService.start(ctx) } catch (_: Exception) { /* background start refused: open the app once */ }
+            try { GatewayService.start(ctx) } catch (_: Exception) {  }
         }
     }
 }
