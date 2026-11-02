@@ -7,7 +7,10 @@ import java.util.concurrent.Executors
 
 object Notifier {
     private var settings: Settings? = null
-    private val pool = Executors.newSingleThreadExecutor { r -> Thread(r, "gateway-notifier").apply { isDaemon = true } }
+    private const val LANES = 4
+    private val lanes = Array(LANES) { i ->
+        Executors.newSingleThreadExecutor { r -> Thread(r, "gateway-notifier-$i").apply { isDaemon = true } }
+    }
     private val FINAL = setOf(Status.SENT, Status.DELIVERED, Status.FAILED, Status.DONE)
     private val RETRY_DELAYS_MS = longArrayOf(2_000, 10_000, 30_000)
 
@@ -17,14 +20,14 @@ object Notifier {
         if (job.status !in FINAL) return
         val s = settings ?: return
         if (s.jobWebhookUrl.isEmpty()) return
-        post(s.jobWebhookUrl, s.token, job.toJson().put("event", "job.status").toString())
+        post(s.jobWebhookUrl, s.token, job.toJson().put("event", "job.status").toString(), job.id)
     }
 
     fun sms(url: String, token: String, m: InboxMessage) =
-        post(url, token, m.toJson().put("event", "sms.received").toString())
+        post(url, token, m.toJson().put("event", "sms.received").toString(), m.from)
 
-    fun post(url: String, token: String, body: String) {
-        pool.execute {
+    fun post(url: String, token: String, body: String, laneKey: String) {
+        lanes[Math.floorMod(laneKey.hashCode(), LANES)].execute {
             for (attempt in 0..RETRY_DELAYS_MS.size) {
                 try {
                     val c = URL(url).openConnection() as HttpURLConnection
