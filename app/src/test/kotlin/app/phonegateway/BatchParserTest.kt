@@ -126,3 +126,21 @@ class InboxDuplicateTest {
         assertTrue(Inbox.add(InboxMessage("+212600000011", "ok", now + 60_000)))
     }
 }
+
+class SendErrorTest {
+    @Test fun causesUseTheAndroidResultNames() {
+        assertTrue(sendError(1, -1).startsWith("RESULT_ERROR_GENERIC_FAILURE"))
+        assertTrue(sendError(2, -1).startsWith("RESULT_ERROR_RADIO_OFF"))
+        assertTrue(sendError(4, -1).startsWith("RESULT_ERROR_NO_SERVICE"))
+        assertTrue(sendError(5, -1).startsWith("RESULT_ERROR_LIMIT_EXCEEDED"))
+        assertTrue(sendError(6, -1).startsWith("RESULT_ERROR_FDN_CHECK_FAILURE"))
+    }
+
+    @Test fun radioCodeIsAppendedWhenKnown() {
+        assertTrue(sendError(1, 3).endsWith("code radio 3"))
+    }
+
+    @Test fun unknownCodeStillHasAName() {
+        assertTrue(sendError(42, -1).startsWith("RESULT_ERROR_UNKNOWN"))
+    }
+}

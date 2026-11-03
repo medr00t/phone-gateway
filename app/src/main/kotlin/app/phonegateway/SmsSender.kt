@@ -53,7 +53,7 @@ class SmsResultReceiver : BroadcastReceiver() {
             SmsSender.ACTION_DELIVERED ->
                 if (resultCode == android.app.Activity.RESULT_OK) {
                     if (job.partsDelivered.incrementAndGet() >= job.partsTotal.get() && job.status != Status.FAILED) job.set(Status.DELIVERED)
-                } else job.set(Status.FAILED, "non livré (le destinataire n'a pas reçu le SMS)")
+                } else job.set(Status.FAILED, "DELIVERY_FAILED (recipient did not receive the SMS)")
         }
         JobStore.save()
     }
@@ -61,15 +61,15 @@ class SmsResultReceiver : BroadcastReceiver() {
 
 fun sendError(code: Int, radioCode: Int): String {
     val name = when (code) {
-        1 -> "GENERIC_FAILURE (échec générique, souvent pas de crédit/forfait ou SIM bloquée)"
-        2 -> "RADIO_OFF (mode avion ou radio coupée)"
-        3 -> "NULL_PDU (message invalide)"
-        4 -> "NO_SERVICE (pas de réseau)"
-        5 -> "LIMIT_EXCEEDED (limite d'envoi Android atteinte)"
-        6 -> "FDN_CHECK_FAILURE (numéro interdit par la SIM)"
-        7 -> "SHORT_CODE_NOT_ALLOWED"
-        8 -> "SHORT_CODE_NEVER_ALLOWED"
-        else -> "code $code"
+        1 -> "RESULT_ERROR_GENERIC_FAILURE (Generic failure cause)"
+        2 -> "RESULT_ERROR_RADIO_OFF (Failed because radio was explicitly turned off)"
+        3 -> "RESULT_ERROR_NULL_PDU (Failed because no pdu provided)"
+        4 -> "RESULT_ERROR_NO_SERVICE (Failed because service is currently unavailable)"
+        5 -> "RESULT_ERROR_LIMIT_EXCEEDED (Failed because we reached the sending queue limit)"
+        6 -> "RESULT_ERROR_FDN_CHECK_FAILURE (Failed because FDN is enabled)"
+        7 -> "RESULT_ERROR_SHORT_CODE_NOT_ALLOWED (Failed because the short code is not allowed)"
+        8 -> "RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED (Failed because the short code is never allowed)"
+        else -> "RESULT_ERROR_UNKNOWN (code $code)"
     }
     return if (radioCode >= 0) "$name, code radio $radioCode" else name
 }
