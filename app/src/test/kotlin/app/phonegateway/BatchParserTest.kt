@@ -111,3 +111,18 @@ class RetentionDurationTest {
         assertEquals(3650L * Retention.DAY_MS, Retention.maxAgeMs(99999))
     }
 }
+
+class InboxDuplicateTest {
+    @Test fun sameMessageTwiceWithinSecondsIsKeptOnce() {
+        val now = System.currentTimeMillis()
+        assertTrue(Inbox.add(InboxMessage("+212600000010", "code 1234", now)))
+        assertFalse(Inbox.add(InboxMessage("+212600000010", "code 1234", now + 800)))
+        assertEquals(1, Inbox.since(now - 1, "+212600000010").size)
+    }
+
+    @Test fun sameTextMuchLaterIsAnotherMessage() {
+        val now = System.currentTimeMillis()
+        assertTrue(Inbox.add(InboxMessage("+212600000011", "ok", now)))
+        assertTrue(Inbox.add(InboxMessage("+212600000011", "ok", now + 60_000)))
+    }
+}

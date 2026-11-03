@@ -14,5 +14,6 @@ object Retention {
         val maxAge = maxAgeMs(settings.retentionDays)
         JobStore.purge(maxAge)
         Inbox.purge(maxAge)
+        SystemSms.purge(ctx, maxAge)
     }
 }

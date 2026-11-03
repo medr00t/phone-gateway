@@ -75,6 +75,7 @@ class MainActivity : ComponentActivity() {
         Manifest.permission.POST_NOTIFICATIONS to "Notifications",
     )
 
+    private val DEFAULT_SMS_REQUEST = 77
     private val retentionOptions = listOf(7 to "1 semaine", 30 to "1 mois", 60 to "2 mois", 90 to "3 mois")
 
     private val perms = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { shownSignature = ""; refresh() }
@@ -266,15 +267,19 @@ class MainActivity : ComponentActivity() {
         return root
     }
 
-    private fun permissionsSignature() = "perm|${missingPermissions().joinToString()}|${batteryOk()}"
+    private fun permissionsSignature() = "perm|${missingPermissions().joinToString()}|${batteryOk()}|${SystemSms.isDefault(this)}"
 
     private fun permissionsView(): View {
         val col = column()
         val missing = missingPermissions()
         allPermissions.forEach { p -> col.addView(statusRow(permissionNames.getValue(p), p !in missing)) }
         col.addView(statusRow("Batterie non restreinte", batteryOk()))
+        val isDefaultSms = SystemSms.isDefault(this)
+        col.addView(statusRow("Application SMS par défaut", isDefaultSms))
         if (missing.isNotEmpty()) col.addView(button("Autoriser", primary) { perms.launch(allPermissions.toTypedArray()) })
         if (!batteryOk()) col.addView(button("Désactiver l'optimisation batterie", primary) { askBatteryExemption() })
+        if (!isDefaultSms) col.addView(button("Définir comme application SMS", primary) { startActivityForResult(SystemSms.requestIntent(this), DEFAULT_SMS_REQUEST) })
+        else col.addView(button("Vider les SMS du téléphone", primary, outline = true) { confirmClearSystemSms() })
         col.addView(button("Réglages de l'application", primary, outline = true) {
             startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
         })
@@ -346,6 +351,27 @@ class MainActivity : ComponentActivity() {
         }
         toast("${r.items.size} message(s) en file" + if (r.errors.isEmpty()) "" else ", ${r.errors.size} ignoré(s):\n" + r.errors.take(6).joinToString("\n"))
         select(1)
+    }
+
+    private fun confirmClearSystemSms() {
+        AlertDialog.Builder(this)
+            .setMessage("Supprimer tous les SMS enregistrés sur ce téléphone ?")
+            .setNegativeButton("Annuler", null)
+            .setPositiveButton("Supprimer") { _, _ ->
+                Thread {
+                    val n = SystemSms.clear(this)
+                    ui.post { toast("$n SMS supprimés") }
+                }.start()
+            }.show()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == DEFAULT_SMS_REQUEST) {
+            refresh()
+            if (SystemSms.isDefault(this)) Thread { Retention.purge(this) }.start()
+        }
     }
 
     @android.annotation.SuppressLint("BatteryLife")

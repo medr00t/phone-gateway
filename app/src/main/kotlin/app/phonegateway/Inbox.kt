@@ -12,6 +12,7 @@ class InboxMessage(val from: String, val text: String, val at: Long) {
 
 object Inbox {
     private const val MAX = 2000
+    private const val DUPLICATE_WINDOW_MS = 5000L
     private val items = ArrayList<InboxMessage>()
     private var file: java.io.File? = null
 
@@ -25,7 +26,25 @@ object Inbox {
         }
     }
 
-    @Synchronized fun add(m: InboxMessage) { items.add(m); while (items.size > MAX) items.removeAt(0); save() }
+    @Synchronized fun add(m: InboxMessage): Boolean {
+        val last = items.lastOrNull()
+        if (last != null && last.from == m.from && last.text == m.text && m.at - last.at < DUPLICATE_WINDOW_MS) return false
+        items.add(m)
+        while (items.size > MAX) items.removeAt(0)
+        save()
+        return true
+    }
+
+    fun receive(ctx: Context, intent: Intent) {
+        JobStore.init(ctx)
+        val parts = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return
+        if (parts.isEmpty()) return
+        val from = parts[0].originatingAddress ?: return
+        val m = InboxMessage(from, parts.joinToString("") { it.messageBody.orEmpty() }, System.currentTimeMillis())
+        if (!add(m)) return
+        val st = Settings(ctx)
+        if (st.webhookUrl.isNotEmpty()) Notifier.sms(st.webhookUrl, st.token, m)
+    }
 
     @Synchronized fun all(): List<InboxMessage> = items.toList()
 
@@ -49,14 +68,5 @@ object Inbox {
 }
 
 class SmsInboxReceiver : BroadcastReceiver() {
-    override fun onReceive(ctx: Context, intent: Intent) {
-        JobStore.init(ctx)
-        val parts = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return
-        if (parts.isEmpty()) return
-        val from = parts[0].originatingAddress ?: return
-        val m = InboxMessage(from, parts.joinToString("") { it.messageBody.orEmpty() }, System.currentTimeMillis())
-        Inbox.add(m)
-        val st = Settings(ctx)
-        if (st.webhookUrl.isNotEmpty()) Notifier.sms(st.webhookUrl, st.token, m)
-    }
+    override fun onReceive(ctx: Context, intent: Intent) = Inbox.receive(ctx, intent)
 }
