@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
     )
 
     private val DEFAULT_SMS_REQUEST = 77
-    private val retentionOptions = listOf(7 to "1 semaine", 30 to "1 mois", 60 to "2 mois", 90 to "3 mois")
+    private val retentionOptions = listOf(0 to "2 min (test)", 7 to "1 semaine", 30 to "1 mois", 60 to "2 mois", 90 to "3 mois")
 
     private val perms = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { shownSignature = ""; refresh() }
     private val pickJson = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { importFile(it) } }

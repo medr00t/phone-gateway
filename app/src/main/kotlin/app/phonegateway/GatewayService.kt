@@ -44,7 +44,7 @@ class GatewayService : Service() {
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private fun purgeLoop() {
         Thread { Retention.purge(this) }.start()
-        handler.postDelayed({ purgeLoop() }, 6L * 3600 * 1000)
+        handler.postDelayed({ purgeLoop() }, Retention.intervalMs(Settings(this).retentionDays))
     }
 
     override fun onDestroy() {

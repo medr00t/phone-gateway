@@ -107,7 +107,8 @@ class RetentionTest {
 class RetentionDurationTest {
     @Test fun daysAreKeptWithinBounds() {
         assertEquals(30L * 24 * 3600 * 1000, Retention.maxAgeMs(30))
-        assertEquals(Retention.DAY_MS, Retention.maxAgeMs(0))
+        assertEquals(Retention.TEST_MS, Retention.maxAgeMs(0))
+        assertEquals(Retention.DAY_MS, Retention.maxAgeMs(1))
         assertEquals(3650L * Retention.DAY_MS, Retention.maxAgeMs(99999))
     }
 }
