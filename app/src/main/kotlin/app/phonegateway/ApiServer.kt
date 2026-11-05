@@ -114,8 +114,10 @@ class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
     private fun accept(r: ParsedBatch): Response {
         val errs = JSONArray(); r.errors.forEach { errs.put(it) }
 
-        val fresh = r.items.filter { it.id == null || JobStore.byMessage(it.id).isEmpty() }
-        r.items.filter { it !in fresh }.forEach { errs.put("id déjà utilisé: ${it.id}") }
+        val split = BatchDedupe.split(r.items) { JobStore.byMessage(it).isNotEmpty() }
+        val fresh = split.fresh
+        split.known.forEach { errs.put("id déjà utilisé: ${it.id}") }
+        if (split.isReplay) return json(Response.Status.ACCEPTED, JSONObject().put("accepted", 0).put("messages", JSONArray()).put("errors", errs))
         if (fresh.isEmpty()) return json(Response.Status.BAD_REQUEST, JSONObject().put("error", "aucun message valide").put("errors", errs))
         val (batchId, jobs) = Dispatcher.enqueueSms(fresh, r.delayMs ?: 2000)
         val msgs = JSONArray()
