@@ -52,6 +52,14 @@ class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
                 json(Response.Status.ACCEPTED, JSONObject().put("id", j.id))
             }
 
+            post && path == "/api/ussd" -> {
+                val o = parseObject(s) ?: return bad("JSON invalide")
+                val code = o.optString("code", "").trim()
+                if (!UssdCode.isValid(code)) return bad("code USSD invalide")
+                val j = Dispatcher.enqueueUssd(code, if (o.has("ref")) o.get("ref").toString() else null)
+                json(Response.Status.ACCEPTED, JSONObject().put("id", j.id))
+            }
+
             get && path == "/api/jobs" -> {
                 val p = s.parameters
                 val batch = p["batch"]?.firstOrNull()

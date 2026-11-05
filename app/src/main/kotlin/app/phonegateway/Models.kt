@@ -3,7 +3,7 @@ package app.phonegateway
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicInteger
 
-enum class Kind { SMS, CALL }
+enum class Kind { SMS, CALL, USSD }
 
 enum class Status { QUEUED, SENDING, SENT, DELIVERED, FAILED, CALLING, DONE }
 
@@ -26,6 +26,7 @@ class Job(
     @Volatile var durationSec: Int = -1
     @Volatile var connected: Boolean? = null
     @Volatile var verdict: String? = null
+    @Volatile var response: String? = null
     val partsTotal = AtomicInteger(0)
     val partsSent = AtomicInteger(0)
     val partsDelivered = AtomicInteger(0)
@@ -47,6 +48,7 @@ class Job(
         if (groupId != null) put("groupId", groupId)
         put("status", status.name)
         if (error != null) put("error", error)
+        if (response != null) put("response", response)
         if (kind == Kind.CALL && durationSec >= 0) {
             put("durationSec", durationSec)
             put("connected", connected ?: false)
@@ -70,6 +72,7 @@ class Job(
         ).also {
             it.status = Status.valueOf(o.optString("status", "QUEUED"))
             it.error = if (o.has("error")) o.getString("error") else null
+            it.response = if (o.has("response")) o.getString("response") else null
             it.updatedAt = o.optLong("updatedAt", it.createdAt)
             if (o.has("durationSec")) {
                 it.durationSec = o.getInt("durationSec")
