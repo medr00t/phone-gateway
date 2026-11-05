@@ -21,7 +21,7 @@ Every `/api/*` route needs `Authorization: Bearer <token>`.
 | `POST /api/sms` | send one SMS: `{"to","text","ref"}` |
 | `POST /api/sms/batch` | send many SMS |
 | `POST /api/call` | place a call: `{"to","hangupAfterSec"}` |
-| `POST /api/ussd` | run a USSD code: `{"code":"*123#","ref"}`, the reply comes in the job webhook as `response` |
+| `POST /api/ussd` | run a USSD code: `{"code":"*123#","ref","mode"}`. `request` (default) puts the operator reply in the job webhook as `response`; `dial` dials the code like the phone app, for services that refuse the request mode |
 | `GET /api/jobs`, `GET /api/jobs/{id}` | status of messages and calls, filters `batch`, `status`, `limit` |
 | `GET /api/inbox?since=&from=` | received SMS |
 | `GET /api/settings`, `POST /api/settings` | webhook URLs |

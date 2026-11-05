@@ -56,7 +56,8 @@ class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
                 val o = parseObject(s) ?: return bad("JSON invalide")
                 val code = o.optString("code", "").trim()
                 if (!UssdCode.isValid(code)) return bad("code USSD invalide")
-                val j = Dispatcher.enqueueUssd(code, if (o.has("ref")) o.get("ref").toString() else null)
+                val ref = if (o.has("ref")) o.get("ref").toString() else null
+                val j = if (o.optString("mode", "request") == "dial") Dispatcher.enqueueDial(code, ref) else Dispatcher.enqueueUssd(code, ref)
                 json(Response.Status.ACCEPTED, JSONObject().put("id", j.id))
             }
 
