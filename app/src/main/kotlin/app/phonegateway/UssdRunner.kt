@@ -3,11 +3,8 @@ package app.phonegateway
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.net.Uri
-import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.telecom.TelecomManager
 import android.telephony.TelephonyManager
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -16,7 +13,6 @@ object UssdRunner {
     class Result(val ok: Boolean, val response: String?, val error: String?)
 
     private const val TIMEOUT_SEC = 40L
-    private const val DIAL_WAIT_MS = 8_000L
 
     fun runJob(ctx: Context, job: Job) {
         job.set(Status.SENDING)
@@ -27,24 +23,6 @@ object UssdRunner {
         } else {
             job.set(Status.FAILED, r.error)
         }
-    }
-
-    @Suppress("MissingPermission")
-    fun dialJob(ctx: Context, job: Job) {
-        if (ctx.checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
-            job.set(Status.FAILED, "permission manquante: CALL_PHONE")
-            return
-        }
-        job.set(Status.SENDING)
-        try {
-            ctx.getSystemService(TelecomManager::class.java).placeCall(Uri.fromParts("tel", job.text, null), Bundle())
-        } catch (e: SecurityException) {
-            job.set(Status.FAILED, "permission refusée")
-            return
-        }
-        Thread.sleep(DIAL_WAIT_MS)
-        job.response = "code composé, la réponse de l'opérateur s'affiche sur le téléphone"
-        job.set(Status.DONE)
     }
 
     @Synchronized

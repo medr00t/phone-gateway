@@ -3,7 +3,7 @@ package app.phonegateway
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicInteger
 
-enum class Kind { SMS, CALL, USSD, DIAL }
+enum class Kind { SMS, CALL, USSD }
 
 enum class Status { QUEUED, SENDING, SENT, DELIVERED, FAILED, CALLING, DONE }
 

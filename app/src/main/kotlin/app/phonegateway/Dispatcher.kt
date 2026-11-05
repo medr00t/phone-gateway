@@ -20,7 +20,6 @@ object Dispatcher {
                         Kind.SMS -> SmsSender.send(app, job)
                         Kind.CALL -> CallRunner.run(app, job)
                         Kind.USSD -> UssdRunner.runJob(app, job)
-                        Kind.DIAL -> UssdRunner.dialJob(app, job)
                     }
                 } catch (e: Exception) {
                     job.set(Status.FAILED, e.message ?: e.javaClass.simpleName)
@@ -54,12 +53,6 @@ object Dispatcher {
 
     fun enqueueUssd(code: String, ref: String?): Job {
         val j = Job(UUID.randomUUID().toString().take(12), Kind.USSD, code, code, ref, null, 2000)
-        JobStore.add(j); queue.add(j)
-        return j
-    }
-
-    fun enqueueDial(code: String, ref: String?): Job {
-        val j = Job(UUID.randomUUID().toString().take(12), Kind.DIAL, code, code, ref, null, 2000)
         JobStore.add(j); queue.add(j)
         return j
     }
