@@ -22,6 +22,7 @@ Every `/api/*` route needs `Authorization: Bearer <token>`.
 | `POST /api/sms/batch` | send many SMS |
 | `POST /api/call` | place a call: `{"to","hangupAfterSec"}` |
 | `POST /api/ussd` | run a USSD code: `{"code":"*123#","ref","sim"}`, `sim` is the slot (1 or 2) on a dual-SIM phone, the reply comes in the job webhook as `response` |
+| `GET /api/info` | version, the roles this phone has (SMS, calls and USSD) with their SIM, and the SIMs |
 | `GET /api/sims` | the active SIMs: `slot`, `name`, `carrier`, `number` |
 | `GET /api/jobs`, `GET /api/jobs/{id}` | status of messages and calls, filters `batch`, `status`, `limit` |
 | `GET /api/inbox?since=&from=` | received SMS |
@@ -57,7 +58,7 @@ A repeated `id` answers `409`, an unknown one `404`. Point the client at the pho
 
 ## Dual-SIM
 
-In the app's settings pick the SIM used for SMS and the one used for USSD and calls. "Default" keeps the phone's own choice. A request can still override it with `"sim": 1` or `2`; `GET /api/sims` lists the SIMs.
+In the app's settings pick the SIM used for SMS and the one used for USSD and calls. "Default" keeps the phone's own choice. The two switches say whether this phone sends SMS and whether it places calls and USSD codes; a server reads them from `GET /api/info`. A request can still override the SIM with `"sim": 1` or `2`; `GET /api/sims` lists the SIMs.
 
 ## Webhooks
 

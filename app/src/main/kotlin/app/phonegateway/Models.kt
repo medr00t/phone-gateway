@@ -28,6 +28,7 @@ class Job(
     @Volatile var connected: Boolean? = null
     @Volatile var verdict: String? = null
     @Volatile var response: String? = null
+    @Volatile var usedSim: Int? = null
     val partsTotal = AtomicInteger(0)
     val partsSent = AtomicInteger(0)
     val partsDelivered = AtomicInteger(0)
@@ -46,7 +47,7 @@ class Job(
         if (kind == Kind.SMS) put("text", text)
         if (ref != null) put("ref", ref)
         if (batchId != null) put("batchId", batchId)
-        if (sim != null) put("sim", sim)
+        (usedSim ?: sim)?.let { put("sim", it) }
         if (groupId != null) put("groupId", groupId)
         put("status", status.name)
         if (error != null) put("error", error)
@@ -76,6 +77,7 @@ class Job(
             it.status = Status.valueOf(o.optString("status", "QUEUED"))
             it.error = if (o.has("error")) o.getString("error") else null
             it.response = if (o.has("response")) o.getString("response") else null
+            it.usedSim = if (o.has("sim")) o.getInt("sim") else null
             it.updatedAt = o.optLong("updatedAt", it.createdAt)
             if (o.has("durationSec")) {
                 it.durationSec = o.getInt("durationSec")

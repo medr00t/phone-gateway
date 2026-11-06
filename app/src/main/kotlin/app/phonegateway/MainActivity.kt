@@ -314,6 +314,10 @@ class MainActivity : ComponentActivity() {
         col.addView(fieldLabel("Webhook statuts")); col.addView(jobHook)
         col.addView(fieldLabel("Webhook SMS reçus")); col.addView(smsHook)
         col.addView(switchRow("Démarrage automatique", auto))
+        val roleSms = Switch(this).apply { isChecked = settings.roleSms }
+        val roleCalls = Switch(this).apply { isChecked = settings.roleCalls }
+        col.addView(switchRow("Envoie les SMS", roleSms))
+        col.addView(switchRow("Passe les appels et les codes USSD", roleCalls))
         val smsSimPicker = simPicker(settings.smsSim)
         val ussdSimPicker = simPicker(settings.ussdSim)
         col.addView(fieldLabel("Carte SIM pour les SMS")); col.addView(smsSimPicker.first)
@@ -347,6 +351,8 @@ class MainActivity : ComponentActivity() {
             settings.jobWebhookUrl = jobHook.text.toString()
             settings.webhookUrl = smsHook.text.toString()
             settings.autostart = auto.isChecked
+            settings.roleSms = roleSms.isChecked
+            settings.roleCalls = roleCalls.isChecked
             settings.smsSim = smsSimPicker.second[smsSimPicker.first.selectedItemPosition]
             settings.ussdSim = ussdSimPicker.second[ussdSimPicker.first.selectedItemPosition]
             settings.retentionEnabled = retention.isChecked

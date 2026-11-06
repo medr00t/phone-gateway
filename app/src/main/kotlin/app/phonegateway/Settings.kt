@@ -31,6 +31,14 @@ class Settings(ctx: Context) {
 
     fun regenerateToken() { p.edit().remove("token").apply() }
 
+    var roleSms: Boolean
+        get() = p.getBoolean("roleSms", true)
+        set(v) { p.edit().putBoolean("roleSms", v).apply() }
+
+    var roleCalls: Boolean
+        get() = p.getBoolean("roleCalls", false)
+        set(v) { p.edit().putBoolean("roleCalls", v).apply() }
+
     var smsSim: Int
         get() = p.getInt("smsSim", 0)
         set(v) { p.edit().putInt("smsSim", v.coerceIn(0, 4)).apply() }

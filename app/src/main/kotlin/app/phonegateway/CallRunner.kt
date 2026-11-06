@@ -28,6 +28,7 @@ object CallRunner {
         val start = System.currentTimeMillis()
         val extras = Bundle()
         val callSim = job.sim ?: Settings(ctx).ussdSim.takeIf { it > 0 }
+        job.usedSim = callSim
         if (callSim != null) {
             val account = Sims.callAccount(ctx, callSim)
             if (account == null) {
