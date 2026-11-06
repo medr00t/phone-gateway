@@ -37,7 +37,7 @@ object Dispatcher {
     fun enqueueSms(items: List<BatchItem>, delayMs: Long): Pair<String, List<Job>> {
         val batchId = UUID.randomUUID().toString().take(8)
         val jobs = items.map {
-            val j = Job(it.id ?: UUID.randomUUID().toString().take(12), Kind.SMS, it.to, it.text, it.ref, batchId, delayMs)
+            val j = Job(it.id ?: UUID.randomUUID().toString().take(12), Kind.SMS, it.to, it.text, it.ref, batchId, delayMs, sim = it.sim)
             JobStore.add(j); queue.add(j); j
         }
         return batchId to jobs
@@ -51,14 +51,14 @@ object Dispatcher {
         }
     }
 
-    fun enqueueUssd(code: String, ref: String?): Job {
-        val j = Job(UUID.randomUUID().toString().take(12), Kind.USSD, code, code, ref, null, 2000)
+    fun enqueueUssd(code: String, ref: String?, sim: Int? = null): Job {
+        val j = Job(UUID.randomUUID().toString().take(12), Kind.USSD, code, code, ref, null, 2000, sim = sim)
         JobStore.add(j); queue.add(j)
         return j
     }
 
-    fun enqueueCall(to: String, ref: String?, hangupAfterSec: Int, waitSmsSec: Int = 30, probeText: String = ""): Job {
-        val j = Job(UUID.randomUUID().toString().take(12), Kind.CALL, to, probeText, ref, null, 3000, hangupAfterSec, waitSmsSec)
+    fun enqueueCall(to: String, ref: String?, hangupAfterSec: Int, waitSmsSec: Int = 30, probeText: String = "", sim: Int? = null): Job {
+        val j = Job(UUID.randomUUID().toString().take(12), Kind.CALL, to, probeText, ref, null, 3000, hangupAfterSec, waitSmsSec, sim = sim)
         JobStore.add(j); queue.add(j)
         return j
     }

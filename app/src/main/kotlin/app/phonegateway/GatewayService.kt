@@ -32,7 +32,7 @@ class GatewayService : Service() {
 
         running = true
         if (server == null) {
-            server = ApiServer(settings, settings.port).also { it.start(5000, false) }
+            server = ApiServer(settings, settings.port, applicationContext).also { it.start(5000, false) }
             Dispatcher.start(this)
             purgeLoop()
             wake = getSystemService(PowerManager::class.java)

@@ -18,10 +18,11 @@ Every `/api/*` route needs `Authorization: Bearer <token>`.
 | Route | Purpose |
 |---|---|
 | `GET /api/status` | state and queue size |
-| `POST /api/sms` | send one SMS: `{"to","text","ref"}` |
+| `POST /api/sms` | send one SMS: `{"to","text","ref","sim"}`, `sim` is the slot to send from on a dual-SIM phone |
 | `POST /api/sms/batch` | send many SMS |
 | `POST /api/call` | place a call: `{"to","hangupAfterSec"}` |
-| `POST /api/ussd` | run a USSD code: `{"code":"*123#","ref"}`, the reply comes in the job webhook as `response` |
+| `POST /api/ussd` | run a USSD code: `{"code":"*123#","ref","sim"}`, `sim` is the slot (1 or 2) on a dual-SIM phone, the reply comes in the job webhook as `response` |
+| `GET /api/sims` | the active SIMs: `slot`, `name`, `carrier`, `number` |
 | `GET /api/jobs`, `GET /api/jobs/{id}` | status of messages and calls, filters `batch`, `status`, `limit` |
 | `GET /api/inbox?since=&from=` | received SMS |
 | `GET /api/settings`, `POST /api/settings` | webhook URLs |

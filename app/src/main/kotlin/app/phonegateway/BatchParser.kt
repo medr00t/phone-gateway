@@ -4,7 +4,7 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-data class BatchItem(val to: String, val text: String, val ref: String?, val id: String? = null)
+data class BatchItem(val to: String, val text: String, val ref: String?, val id: String? = null, val sim: Int? = null)
 
 class ParsedBatch(val items: List<BatchItem>, val delayMs: Long?, val errors: List<String>)
 
@@ -59,13 +59,15 @@ object BatchParser {
                 else -> receivers.add(v.toString())
             }
             if (receivers.isEmpty()) { errors.add("$label: destinataire manquant"); continue }
+            val sim = if (o.has("sim") && !o.isNull("sim")) o.optInt("sim", 0) else null
+            if (sim != null && sim !in 1..4) { errors.add("$label: sim invalide (1 à 4)"); continue }
             val id = if (o.has("id") && !o.isNull("id")) o.get("id").toString() else null
             if (id != null && !ID.matches(id)) { errors.add("$label: id invalide (lettres, chiffres, _ . : # -, 100 max)"); continue }
             if (id != null && receivers.size > 1) { errors.add("$label: un id ne peut servir qu'à un seul numéro"); continue }
             if (id != null && !seenIds.add(id)) { errors.add("$label: id en double dans le lot (\"$id\")"); continue }
             for (r in receivers) {
                 val n = normalizeNumber(r)
-                if (n == null) errors.add("$label: numéro invalide \"$r\"") else items.add(BatchItem(n, text, ref, id))
+                if (n == null) errors.add("$label: numéro invalide \"$r\"") else items.add(BatchItem(n, text, ref, id, sim))
             }
         }
         return ParsedBatch(items, delay, errors)

@@ -6,7 +6,7 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.security.MessageDigest
 
-class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
+class ApiServer(private val settings: Settings, port: Int, private val ctx: android.content.Context) : NanoHTTPD(port) {
     private companion object { const val MAX_BODY = 2_000_000 }
 
     override fun serve(session: IHTTPSession): Response {
@@ -48,15 +48,21 @@ class ApiServer(private val settings: Settings, port: Int) : NanoHTTPD(port) {
                 val hang = o.optInt("hangupAfterSec", 25).coerceIn(5, 60)
                 val wait = o.optInt("waitSmsSec", 30).coerceIn(0, 120)
                 val probe = o.optString("probeText", "").take(160)
-                val j = Dispatcher.enqueueCall(to, if (o.has("ref")) o.get("ref").toString() else null, hang, wait, probe)
+                val sim = if (o.has("sim")) o.optInt("sim", 0) else null
+                if (sim != null && sim !in 1..4) return bad("sim invalide (1 à 4)")
+                val j = Dispatcher.enqueueCall(to, if (o.has("ref")) o.get("ref").toString() else null, hang, wait, probe, sim)
                 json(Response.Status.ACCEPTED, JSONObject().put("id", j.id))
             }
+
+            get && path == "/api/sims" -> json(Response.Status.OK, JSONObject().put("sims", Sims.list(ctx)))
 
             post && path == "/api/ussd" -> {
                 val o = parseObject(s) ?: return bad("JSON invalide")
                 val code = o.optString("code", "").trim()
                 if (!UssdCode.isValid(code)) return bad("code USSD invalide")
-                val j = Dispatcher.enqueueUssd(code, if (o.has("ref")) o.get("ref").toString() else null)
+                val sim = if (o.has("sim")) o.optInt("sim", 0) else null
+                if (sim != null && sim !in 1..4) return bad("sim invalide (1 à 4)")
+                val j = Dispatcher.enqueueUssd(code, if (o.has("ref")) o.get("ref").toString() else null, sim)
                 json(Response.Status.ACCEPTED, JSONObject().put("id", j.id))
             }
 

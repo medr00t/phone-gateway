@@ -14,7 +14,7 @@ object SmsSender {
     @Suppress("DEPRECATION")
     fun send(ctx: Context, job: Job) {
         job.set(Status.SENDING)
-        val sm = if (Build.VERSION.SDK_INT >= 31) ctx.getSystemService(SmsManager::class.java) else SmsManager.getDefault()
+        val sm = Sims.smsManager(ctx, job.sim)
         val parts = sm.divideMessage(job.text)
         job.partsTotal.set(parts.size)
         val sent = ArrayList<PendingIntent>()

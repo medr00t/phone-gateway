@@ -19,6 +19,7 @@ class Job(
     val waitSmsSec: Int = 30,
     val groupId: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
+    val sim: Int? = null,
 ) {
     @Volatile var status: Status = Status.QUEUED
     @Volatile var error: String? = null
@@ -45,6 +46,7 @@ class Job(
         if (kind == Kind.SMS) put("text", text)
         if (ref != null) put("ref", ref)
         if (batchId != null) put("batchId", batchId)
+        if (sim != null) put("sim", sim)
         if (groupId != null) put("groupId", groupId)
         put("status", status.name)
         if (error != null) put("error", error)
@@ -69,6 +71,7 @@ class Job(
             batchId = if (o.has("batchId")) o.getString("batchId") else null,
             groupId = if (o.has("groupId")) o.getString("groupId") else null,
             createdAt = o.optLong("createdAt", System.currentTimeMillis()),
+            sim = if (o.has("sim")) o.getInt("sim") else null,
         ).also {
             it.status = Status.valueOf(o.optString("status", "QUEUED"))
             it.error = if (o.has("error")) o.getString("error") else null

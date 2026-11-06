@@ -26,7 +26,16 @@ object CallRunner {
         }
         job.set(Status.CALLING)
         val start = System.currentTimeMillis()
-        telecom.placeCall(Uri.fromParts("tel", job.to, null), Bundle())
+        val extras = Bundle()
+        if (job.sim != null) {
+            val account = Sims.callAccount(ctx, job.sim)
+            if (account == null) {
+                job.set(Status.FAILED, "SIM ${job.sim} introuvable")
+                return
+            }
+            extras.putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, account)
+        }
+        telecom.placeCall(Uri.fromParts("tel", job.to, null), extras)
 
         val begin = System.currentTimeMillis()
         while (tm.callState == TelephonyManager.CALL_STATE_IDLE && System.currentTimeMillis() - begin < 5000) Thread.sleep(250)
