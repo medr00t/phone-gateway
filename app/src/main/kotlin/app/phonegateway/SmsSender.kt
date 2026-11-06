@@ -14,7 +14,7 @@ object SmsSender {
     @Suppress("DEPRECATION")
     fun send(ctx: Context, job: Job) {
         job.set(Status.SENDING)
-        val sm = Sims.smsManager(ctx, job.sim)
+        val sm = Sims.smsManager(ctx, job.sim ?: Settings(ctx).smsSim.takeIf { it > 0 })
         val parts = sm.divideMessage(job.text)
         job.partsTotal.set(parts.size)
         val sent = ArrayList<PendingIntent>()

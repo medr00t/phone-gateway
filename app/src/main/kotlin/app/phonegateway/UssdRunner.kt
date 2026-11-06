@@ -17,7 +17,7 @@ object UssdRunner {
 
     fun runJob(ctx: Context, job: Job) {
         job.set(Status.SENDING)
-        val r = run(ctx, job.text, job.sim)
+        val r = run(ctx, job.text, job.sim ?: Settings(ctx).ussdSim.takeIf { it > 0 })
         if (r.ok) {
             job.response = r.response
             job.set(Status.DONE)

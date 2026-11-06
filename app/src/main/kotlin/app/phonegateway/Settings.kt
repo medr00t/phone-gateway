@@ -31,6 +31,14 @@ class Settings(ctx: Context) {
 
     fun regenerateToken() { p.edit().remove("token").apply() }
 
+    var smsSim: Int
+        get() = p.getInt("smsSim", 0)
+        set(v) { p.edit().putInt("smsSim", v.coerceIn(0, 4)).apply() }
+
+    var ussdSim: Int
+        get() = p.getInt("ussdSim", 0)
+        set(v) { p.edit().putInt("ussdSim", v.coerceIn(0, 4)).apply() }
+
     var retentionEnabled: Boolean
         get() = p.getBoolean("retentionEnabled", true)
         set(v) { p.edit().putBoolean("retentionEnabled", v).apply() }

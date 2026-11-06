@@ -55,6 +55,10 @@ The reply holds `batchId`, `accepted`, `messages` and `errors`. See `examples/me
 The reply holds `state` (`Pending`, `Processed`, `Sent`, `Delivered`, `Failed`) and one state per recipient.
 A repeated `id` answers `409`, an unknown one `404`. Point the client at the phone's IP, port 8088, and it works.
 
+## Dual-SIM
+
+In the app's settings pick the SIM used for SMS and the one used for USSD and calls. "Default" keeps the phone's own choice. A request can still override it with `"sim": 1` or `2`; `GET /api/sims` lists the SIMs.
+
 ## Webhooks
 
 ```

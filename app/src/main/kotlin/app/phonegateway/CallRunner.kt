@@ -27,10 +27,11 @@ object CallRunner {
         job.set(Status.CALLING)
         val start = System.currentTimeMillis()
         val extras = Bundle()
-        if (job.sim != null) {
-            val account = Sims.callAccount(ctx, job.sim)
+        val callSim = job.sim ?: Settings(ctx).ussdSim.takeIf { it > 0 }
+        if (callSim != null) {
+            val account = Sims.callAccount(ctx, callSim)
             if (account == null) {
-                job.set(Status.FAILED, "SIM ${job.sim} introuvable")
+                job.set(Status.FAILED, "SIM $callSim introuvable")
                 return
             }
             extras.putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, account)

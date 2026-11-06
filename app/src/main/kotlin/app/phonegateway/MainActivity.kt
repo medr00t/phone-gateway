@@ -286,6 +286,24 @@ class MainActivity : ComponentActivity() {
         return scroll(col)
     }
 
+    private fun simPicker(current: Int): Pair<android.widget.Spinner, List<Int>> {
+        val slots = ArrayList<Int>()
+        val names = ArrayList<String>()
+        slots.add(0); names.add("Carte par défaut du téléphone")
+        val sims = Sims.list(this)
+        for (i in 0 until sims.length()) {
+            val s = sims.getJSONObject(i)
+            val detail = listOf(s.optString("carrier"), s.optString("number")).filter { it.isNotEmpty() }.joinToString(" · ")
+            slots.add(s.getInt("slot")); names.add("SIM ${s.getInt("slot")}" + if (detail.isEmpty()) "" else " — $detail")
+        }
+        if (current > 0 && current !in slots) { slots.add(current); names.add("SIM $current (absente)") }
+        val spinner = android.widget.Spinner(this).apply {
+            adapter = android.widget.ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, names)
+            setSelection(slots.indexOf(current).coerceAtLeast(0))
+        }
+        return spinner to slots
+    }
+
     private fun settingsView(): View {
         val col = column()
         val port = input("8088", InputType.TYPE_CLASS_NUMBER).apply { setText(settings.port.toString()) }
@@ -296,6 +314,10 @@ class MainActivity : ComponentActivity() {
         col.addView(fieldLabel("Webhook statuts")); col.addView(jobHook)
         col.addView(fieldLabel("Webhook SMS reçus")); col.addView(smsHook)
         col.addView(switchRow("Démarrage automatique", auto))
+        val smsSimPicker = simPicker(settings.smsSim)
+        val ussdSimPicker = simPicker(settings.ussdSim)
+        col.addView(fieldLabel("Carte SIM pour les SMS")); col.addView(smsSimPicker.first)
+        col.addView(fieldLabel("Carte SIM pour USSD et appels")); col.addView(ussdSimPicker.first)
 
         val retention = Switch(this).apply { isChecked = settings.retentionEnabled }
         var chosen = retentionOptions.map { it.first }.minByOrNull { Math.abs(it - settings.retentionDays) } ?: 30
@@ -325,6 +347,8 @@ class MainActivity : ComponentActivity() {
             settings.jobWebhookUrl = jobHook.text.toString()
             settings.webhookUrl = smsHook.text.toString()
             settings.autostart = auto.isChecked
+            settings.smsSim = smsSimPicker.second[smsSimPicker.first.selectedItemPosition]
+            settings.ussdSim = ussdSimPicker.second[ussdSimPicker.first.selectedItemPosition]
             settings.retentionEnabled = retention.isChecked
             settings.retentionDays = chosen
             Thread { Retention.purge(this) }.start()
