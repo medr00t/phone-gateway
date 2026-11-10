@@ -42,7 +42,11 @@ object CallRunner {
         val begin = System.currentTimeMillis()
         while (tm.callState == TelephonyManager.CALL_STATE_IDLE && System.currentTimeMillis() - begin < 5000) Thread.sleep(250)
         val deadline = System.currentTimeMillis() + job.hangupAfterSec * 1000L
-        while (tm.callState != TelephonyManager.CALL_STATE_IDLE && System.currentTimeMillis() < deadline) Thread.sleep(500)
+        var smsSeen = false
+        while (tm.callState != TelephonyManager.CALL_STATE_IDLE && System.currentTimeMillis() < deadline) {
+            if (Inbox.since(start, job.to).isNotEmpty()) { smsSeen = true; break }
+            Thread.sleep(500)
+        }
         if (tm.callState != TelephonyManager.CALL_STATE_IDLE) {
             try { telecom.endCall() } catch (_: SecurityException) { }
         }
@@ -58,12 +62,21 @@ object CallRunner {
             while (c.moveToNext()) {
                 if (c.getString(0).orEmpty().filter { it.isDigit() }.endsWith(last8)) {
                     job.durationSec = c.getInt(1)
-                    job.connected = job.durationSec > 0
-                    job.verdict = CallVerdict.decide(job.connected == true, job.connected != true && waitForSms(ctx, job, start))
+                    val pickedUp = job.durationSec > 0
+                    job.connected = pickedUp
+                    val smsReply = smsSeen || Inbox.since(start, job.to).isNotEmpty() || (!pickedUp && waitForSms(ctx, job, start))
+                    job.verdict = CallVerdict.decide(pickedUp, smsReply)
                     job.set(Status.DONE)
                     return
                 }
             }
+        }
+        if (smsSeen) {
+            job.durationSec = 0
+            job.connected = false
+            job.verdict = CallVerdict.decide(false, true)
+            job.set(Status.DONE)
+            return
         }
         job.set(Status.FAILED, "appel introuvable dans le journal d'appels")
     }

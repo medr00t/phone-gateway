@@ -39,9 +39,9 @@ The reply holds `batchId`, `accepted`, `messages` and `errors`. See `examples/me
 
 `POST /api/call {"to","hangupAfterSec":25,"waitSmsSec":30,"probeText":""}` ends with a `verdict`:
 
-- `VOICEMAIL`: the call was picked up
-- `ALIVE`: the call was rejected and an SMS came back from that number within `waitSmsSec`
-- `OFFLINE`: the call was rejected and nothing came back
+- `ALIVE`: an SMS came back from that number, during or after the call (wins over the other two, and ends the ringing at once)
+- `VOICEMAIL`: the call was picked up and no SMS came back
+- `OFFLINE`: the call was not picked up and no SMS came back within `waitSmsSec`
 
 `probeText` is sent by SMS when nothing came back, then the wait starts again.
 

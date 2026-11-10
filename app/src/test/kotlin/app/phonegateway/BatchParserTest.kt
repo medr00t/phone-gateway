@@ -48,6 +48,7 @@ class CallVerdictTest {
     @Test fun pickedUpIsVoicemail() = assertEquals("VOICEMAIL", CallVerdict.decide(true, false))
     @Test fun rejectedWithSmsIsAlive() = assertEquals("ALIVE", CallVerdict.decide(false, true))
     @Test fun rejectedWithoutSmsIsOffline() = assertEquals("OFFLINE", CallVerdict.decide(false, false))
+    @Test fun anSmsFromTheNumberWinsEvenWhenAVoicemailPickedUp() = assertEquals("ALIVE", CallVerdict.decide(true, true))
 }
 
 class SmsCompatTest {
