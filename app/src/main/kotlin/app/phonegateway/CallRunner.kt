@@ -47,6 +47,8 @@ object CallRunner {
             if (Inbox.since(start, job.to).isNotEmpty()) { smsSeen = true; break }
             Thread.sleep(500)
         }
+        job.ringSec = ((System.currentTimeMillis() - begin) / 1000).toInt()
+        job.endedBy = CallEnd.of(tm.callState != TelephonyManager.CALL_STATE_IDLE, smsSeen)
         if (tm.callState != TelephonyManager.CALL_STATE_IDLE) {
             try { telecom.endCall() } catch (_: SecurityException) { }
         }

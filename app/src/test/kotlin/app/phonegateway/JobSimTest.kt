@@ -42,4 +42,23 @@ class JobSimTest {
         assertTrue(job.toJson().has("response"))
         assertEquals("ok", Job.fromJson(job.toJson()).response)
     }
+
+    @Test fun howTheCallEndedSurvivesTheStoredJson() {
+        val job = Job("c1", Kind.CALL, "+212600000000", "")
+        job.durationSec = 0
+        job.connected = false
+        job.ringSec = 23
+        job.endedBy = "network"
+        val back = Job.fromJson(job.toJson())
+        assertEquals(23, back.ringSec)
+        assertEquals("network", back.endedBy)
+    }
+
+    @Test fun aSmsJobNeverCarriesCallDetails() {
+        val job = Job("s1", Kind.SMS, "+212600000000", "hi")
+        job.ringSec = 5
+        job.endedBy = "network"
+        assertFalse(job.toJson().has("ringSec"))
+        assertFalse(job.toJson().has("endedBy"))
+    }
 }

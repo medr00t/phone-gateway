@@ -27,6 +27,8 @@ class Job(
     @Volatile var durationSec: Int = -1
     @Volatile var connected: Boolean? = null
     @Volatile var verdict: String? = null
+    @Volatile var ringSec: Int = -1
+    @Volatile var endedBy: String? = null
     @Volatile var response: String? = null
     @Volatile var usedSim: Int? = null
     val partsTotal = AtomicInteger(0)
@@ -57,6 +59,8 @@ class Job(
             put("connected", connected ?: false)
             put("outcome", if (connected == true) "PICKED_UP" else "NO_ANSWER")
             if (verdict != null) put("verdict", verdict)
+            if (ringSec >= 0) put("ringSec", ringSec)
+            if (endedBy != null) put("endedBy", endedBy)
         }
         put("createdAt", createdAt)
         put("updatedAt", updatedAt)
@@ -83,6 +87,8 @@ class Job(
                 it.durationSec = o.getInt("durationSec")
                 it.connected = o.optBoolean("connected", false)
                 it.verdict = if (o.has("verdict")) o.getString("verdict") else null
+                it.ringSec = o.optInt("ringSec", -1)
+                it.endedBy = if (o.has("endedBy")) o.getString("endedBy") else null
             }
         }
     }
