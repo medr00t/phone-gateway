@@ -17,7 +17,7 @@ object UssdRunner {
 
     fun runJob(ctx: Context, job: Job) {
         job.set(Status.SENDING)
-        job.usedSim = job.sim ?: Settings(ctx).ussdSim.takeIf { it > 0 }
+        job.usedSim = SimChoice.resolve(job.sim, Settings(ctx).ussdSim)
         val r = run(ctx, job.text, job.usedSim)
         if (r.ok) {
             job.response = r.response

@@ -58,7 +58,8 @@ class ApiServer(private val settings: Settings, port: Int, private val ctx: andr
                 .put("app", "phone-gateway")
                 .put("version", ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName ?: "")
                 .put("sms", JSONObject().put("enabled", settings.roleSms).put("sim", settings.smsSim.takeIf { it > 0 } ?: JSONObject.NULL))
-                .put("ussd", JSONObject().put("enabled", settings.roleCalls).put("sim", settings.ussdSim.takeIf { it > 0 } ?: JSONObject.NULL))
+                .put("ussd", JSONObject().put("enabled", settings.roleUssd).put("sim", settings.ussdSim.takeIf { it > 0 } ?: JSONObject.NULL))
+                .put("calls", JSONObject().put("enabled", settings.roleCall).put("sim", settings.callSim.takeIf { it > 0 } ?: JSONObject.NULL))
                 .put("sims", Sims.list(ctx)))
 
             get && path == "/api/sims" -> json(Response.Status.OK, JSONObject().put("sims", Sims.list(ctx)))

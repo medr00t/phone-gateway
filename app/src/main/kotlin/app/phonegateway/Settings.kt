@@ -35,9 +35,13 @@ class Settings(ctx: Context) {
         get() = p.getBoolean("roleSms", true)
         set(v) { p.edit().putBoolean("roleSms", v).apply() }
 
-    var roleCalls: Boolean
-        get() = p.getBoolean("roleCalls", false)
-        set(v) { p.edit().putBoolean("roleCalls", v).apply() }
+    var roleUssd: Boolean
+        get() = SimChoice.withLegacy(p.contains("roleUssd"), p.getBoolean("roleUssd", false), p.getBoolean("roleCalls", false))
+        set(v) { p.edit().putBoolean("roleUssd", v).apply() }
+
+    var roleCall: Boolean
+        get() = SimChoice.withLegacy(p.contains("roleCall"), p.getBoolean("roleCall", false), p.getBoolean("roleCalls", false))
+        set(v) { p.edit().putBoolean("roleCall", v).apply() }
 
     var smsSim: Int
         get() = p.getInt("smsSim", 0)
@@ -46,6 +50,10 @@ class Settings(ctx: Context) {
     var ussdSim: Int
         get() = p.getInt("ussdSim", 0)
         set(v) { p.edit().putInt("ussdSim", v.coerceIn(0, 4)).apply() }
+
+    var callSim: Int
+        get() = SimChoice.withLegacy(p.contains("callSim"), p.getInt("callSim", 0), p.getInt("ussdSim", 0))
+        set(v) { p.edit().putInt("callSim", v.coerceIn(0, 4)).apply() }
 
     var retentionEnabled: Boolean
         get() = p.getBoolean("retentionEnabled", true)

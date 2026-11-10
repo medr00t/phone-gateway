@@ -315,13 +315,17 @@ class MainActivity : ComponentActivity() {
         col.addView(fieldLabel("Webhook SMS reçus")); col.addView(smsHook)
         col.addView(switchRow("Démarrage automatique", auto))
         val roleSms = Switch(this).apply { isChecked = settings.roleSms }
-        val roleCalls = Switch(this).apply { isChecked = settings.roleCalls }
+        val roleUssd = Switch(this).apply { isChecked = settings.roleUssd }
+        val roleCall = Switch(this).apply { isChecked = settings.roleCall }
         col.addView(switchRow("Envoie les SMS", roleSms))
-        col.addView(switchRow("Passe les appels et les codes USSD", roleCalls))
+        col.addView(switchRow("Exécute les codes USSD", roleUssd))
+        col.addView(switchRow("Passe les appels", roleCall))
         val smsSimPicker = simPicker(settings.smsSim)
         val ussdSimPicker = simPicker(settings.ussdSim)
+        val callSimPicker = simPicker(settings.callSim)
         col.addView(fieldLabel("Carte SIM pour les SMS")); col.addView(smsSimPicker.first)
-        col.addView(fieldLabel("Carte SIM pour USSD et appels")); col.addView(ussdSimPicker.first)
+        col.addView(fieldLabel("Carte SIM pour les codes USSD")); col.addView(ussdSimPicker.first)
+        col.addView(fieldLabel("Carte SIM pour les appels")); col.addView(callSimPicker.first)
 
         val retention = Switch(this).apply { isChecked = settings.retentionEnabled }
         var chosen = retentionOptions.map { it.first }.minByOrNull { Math.abs(it - settings.retentionDays) } ?: 30
@@ -352,9 +356,11 @@ class MainActivity : ComponentActivity() {
             settings.webhookUrl = smsHook.text.toString()
             settings.autostart = auto.isChecked
             settings.roleSms = roleSms.isChecked
-            settings.roleCalls = roleCalls.isChecked
+            settings.roleUssd = roleUssd.isChecked
+            settings.roleCall = roleCall.isChecked
             settings.smsSim = smsSimPicker.second[smsSimPicker.first.selectedItemPosition]
             settings.ussdSim = ussdSimPicker.second[ussdSimPicker.first.selectedItemPosition]
+            settings.callSim = callSimPicker.second[callSimPicker.first.selectedItemPosition]
             settings.retentionEnabled = retention.isChecked
             settings.retentionDays = chosen
             Thread { Retention.purge(this) }.start()
