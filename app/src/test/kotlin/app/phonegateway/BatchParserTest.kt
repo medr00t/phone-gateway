@@ -49,6 +49,25 @@ class CallVerdictTest {
     @Test fun rejectedWithSmsIsAlive() = assertEquals("ALIVE", CallVerdict.decide(false, true))
     @Test fun rejectedWithoutSmsIsOffline() = assertEquals("OFFLINE", CallVerdict.decide(false, false))
     @Test fun anSmsFromTheNumberWinsEvenWhenAVoicemailPickedUp() = assertEquals("ALIVE", CallVerdict.decide(true, true))
+    @Test fun aCallTheNetworkEndedByItselfIsAVoicemail() = assertEquals("VOICEMAIL", CallVerdict.decide(false, false, true))
+    @Test fun anSmsStillWinsOverACallTheNetworkEnded() = assertEquals("ALIVE", CallVerdict.decide(false, true, true))
+    @Test fun aCallThatKeptRingingUntilWeHungUpIsNoAnswer() = assertEquals("OFFLINE", CallVerdict.decide(false, false, false))
+
+    @Test fun theNetworkEndingTheCallAfterRingingCounts() {
+        assertTrue(CallVerdict.releasedByNetwork("network", 23))
+        assertTrue(CallVerdict.releasedByNetwork("network", CallVerdict.MIN_NETWORK_RING_SEC))
+    }
+
+    @Test fun anAlmostInstantFailureIsNotAVoicemail() {
+        assertFalse(CallVerdict.releasedByNetwork("network", 1))
+        assertFalse(CallVerdict.releasedByNetwork("network", CallVerdict.MIN_NETWORK_RING_SEC - 1))
+    }
+
+    @Test fun onlyACallTheNetworkEndedCounts() {
+        assertFalse(CallVerdict.releasedByNetwork("app", 50))
+        assertFalse(CallVerdict.releasedByNetwork("sms", 10))
+        assertFalse(CallVerdict.releasedByNetwork(null, 30))
+    }
 }
 
 class SmsCompatTest {

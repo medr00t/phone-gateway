@@ -67,7 +67,7 @@ object CallRunner {
                     val pickedUp = job.durationSec > 0
                     job.connected = pickedUp
                     val smsReply = smsSeen || Inbox.since(start, job.to).isNotEmpty() || (!pickedUp && waitForSms(ctx, job, start))
-                    job.verdict = CallVerdict.decide(pickedUp, smsReply)
+                    job.verdict = CallVerdict.decide(pickedUp, smsReply, CallVerdict.releasedByNetwork(job.endedBy, job.ringSec))
                     job.set(Status.DONE)
                     return
                 }

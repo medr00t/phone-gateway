@@ -40,8 +40,10 @@ The reply holds `batchId`, `accepted`, `messages` and `errors`. See `examples/me
 `POST /api/call {"to","hangupAfterSec":25,"waitSmsSec":30,"probeText":""}` ends with a `verdict`:
 
 - `ALIVE`: an SMS came back from that number, during or after the call (wins over the other two, and ends the ringing at once)
-- `VOICEMAIL`: the call was picked up and no SMS came back
-- `OFFLINE`: the call was not picked up and no SMS came back within `waitSmsSec`
+- `VOICEMAIL`: the call was picked up, or the network ended it by itself after ringing (a greeting or an operator message), and no SMS came back
+- `OFFLINE`: the call kept ringing until the app hung up, and no SMS came back within `waitSmsSec`
+
+The job also reports `ringSec` and `endedBy` (`network`, `app` or `sms`).
 
 `probeText` is sent by SMS when nothing came back, then the wait starts again.
 
