@@ -142,6 +142,8 @@ class SendErrorTest {
     }
 
     @Test fun unknownCodeStillHasAName() {
+        assertTrue(sendError(112, -1).startsWith("RESULT_RIL_NETWORK_ERR"))
+        assertTrue(sendError(120, -1).startsWith("RESULT_RIL_SIM_ABSENT"))
         assertTrue(sendError(42, -1).startsWith("RESULT_ERROR_UNKNOWN"))
     }
 }
